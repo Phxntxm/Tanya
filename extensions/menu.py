@@ -25,7 +25,7 @@ class MafiaPages(menus.ListPageSource):
             "then provide the amount you want this role to have\n\n",
         )
         for count, (role, amt) in enumerate(entries):
-            emoji = {self.ctx.bot.to_keycap(count)}
+            emoji = self.ctx.bot.to_keycap(count)
             role_type = "Unknown"
             if role.is_citizen:
                 role_type = "Citizen"
@@ -33,7 +33,7 @@ class MafiaPages(menus.ListPageSource):
                 role_type = "Mafia"
             elif role.is_independent:
                 role_type = "Independent"
-            embed.description += f"{emoji} **{role.__name__}**({role_type})"
+            embed.description += f"{emoji} **{role.__name__}**({role_type}): {amt}\n"
         return embed
 
 
@@ -118,7 +118,9 @@ class MafiaMenu(menus.MenuPages):
         num = int(str(payload.emoji)[0])
         role, current_num = self.source.entries[num]
         # Only allow up to how many members can remain
-        if role.is_mafia:
+        if role.limit:
+            amt_allowed = role.limit
+        elif role.is_mafia:
             amt_allowed = self.amount_of_mafia - self.total_mafia + current_num
         else:
             amt_allowed = self.amount_of_citizens - self.total_citizens + current_num
