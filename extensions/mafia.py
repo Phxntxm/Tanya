@@ -5,7 +5,6 @@ class Mafia(commands.Cog):
     games = {}
     # Useful for restarting a game, or getting info on the last game
     previous_games = {}
-    debug_game = None
 
     @commands.group(invoke_without_command=True)
     async def mafia(self, ctx):
@@ -68,50 +67,6 @@ class Mafia(commands.Cog):
             task, game = game
             task.cancel()
             await game.cleanup_channels()
-
-        await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
-
-    @mafia.group(name="debug", invoke_without_command=True)
-    @commands.is_owner()
-    @commands.guild_only()
-    @commands.max_concurrency(1, per=commands.BucketType.guild)
-    async def mafia_debug(self, ctx):
-        """Sets up a game with 5 players, all the author. Allows you to pick roles still"""
-        amount_of_specials = [(k, 0) for k in ctx.bot.__special_roles__]
-        menu = ctx.bot.MafiaMenu(source=ctx.bot.MafiaPages(amount_of_specials, ctx))
-
-        menu.amount_of_players = 5
-        menu.amount_of_mafia = 1
-        await menu.start(ctx, wait=True)
-        game = ctx.bot.MafiaGame(ctx)
-
-        game._config = ctx.bot.MafiaGameConfig(
-            menu.amount_of_mafia,
-            [role for (role, amt) in amount_of_specials for i in range(amt)],
-            ctx,
-        )
-        game._members = [
-            ctx.author,
-            ctx.author,
-            ctx.author,
-            ctx.author,
-            ctx.author,
-        ]
-        task = ctx.bot.loop.create_task(game._start())
-        self.debug_game = (task, game)
-        await task
-
-    @mafia_debug.command(name="stop")
-    @commands.is_owner()
-    @commands.guild_only()
-    @commands.max_concurrency(1, per=commands.BucketType.guild)
-    async def mafia_stop_debug(self, ctx):
-        """Stops the debug game of Mafia"""
-        if self.debug_game is not None:
-            task, game = self.debug_game
-            task.cancel()
-            await game.cleanup_channels()
-            self.debug_game = None
 
         await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
 
