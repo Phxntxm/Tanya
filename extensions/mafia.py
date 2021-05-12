@@ -109,7 +109,7 @@ class Mafia(commands.Cog):
             ctx.author,
             ctx.author,
         ]
-        task = ctx.bot.loop.create_task(game.start())
+        task = ctx.bot.loop.create_task(game._start())
         self.debug_task = (task, game)
         await task
 
@@ -123,6 +123,7 @@ class Mafia(commands.Cog):
             task, game = self.debug_task
             task.cancel()
             await game.cleanup_channels()
+            self.debug_task = None
 
         await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
 

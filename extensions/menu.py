@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from discord.ext import menus
 
@@ -42,16 +43,24 @@ class MafiaMenu(menus.MenuPages):
     amount_of_mafia = 0
 
     @property
-    def total_mafia(self):
-        return sum([v for k, v in self.source.entries if k.is_mafia])
+    def allowed_mafia(self):
+        """The amount of non-mafia roles allowed to add"""
+        return self.amount_of_mafia - sum(
+            [v for k, v in self.source.entries if k.is_mafia]
+        )
 
     @property
-    def total_citizens(self):
-        return sum([v for k, v in self.source.entries if k.is_citizen])
+    def allowed_non_mafia(self):
+        """The amount of non-mafia roles allowed to add"""
+        return (
+            self.amount_of_players
+            - self.amount_of_mafia
+            - sum([v for k, v in self.source.entries if not k.is_mafia])
+        )
 
-    @property
-    def amount_of_citizens(self):
-        return self.amount_of_players - self.amount_of_mafia
+    async def finalize(self, timed_out):
+        if timed_out:
+            raise asyncio.TimeoutError
 
     def should_add_reactions(self):
         return True
@@ -118,12 +127,19 @@ class MafiaMenu(menus.MenuPages):
         num = int(str(payload.emoji)[0])
         role, current_num = self.source.entries[num]
         # Only allow up to how many members can remain
-        if role.limit:
-            amt_allowed = role.limit
-        elif role.is_mafia:
-            amt_allowed = self.amount_of_mafia - self.total_mafia + current_num
+        if role.is_mafia:
+            amt_allowed = self.allowed_mafia + current_num
         else:
-            amt_allowed = self.amount_of_citizens - self.total_citizens + current_num
+            amt_allowed = self.allowed_non_mafia + current_num
+        # Make sure to limit to the role's limit
+        if role.limit:
+            amt_allowed = min(role.limit, amt_allowed)
+
+        # No need to get answer if can't add any anymore
+        if not amt_allowed:
+            await self.ctx.send("Cannot add any more of that role", delete_after=5)
+            return
+
         msg = await self.ctx.send(f"How many? 0 - {amt_allowed}")
         answer = await self.ctx.bot.wait_for(
             "message", check=self.ctx.bot.min_max_check(self.ctx, 0, amt_allowed)
