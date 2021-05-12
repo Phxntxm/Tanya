@@ -52,9 +52,9 @@ class Github(commands.Cog):
         if loaded:
             message += f"Loaded: {loaded}"
         if unloaded:
-            message += f"Loaded: {unloaded}"
+            message += f"Unloaded: {unloaded}"
         if reloaded:
-            message += f"Loaded: {reloaded}"
+            message += f"Reloaded: {reloaded}"
         if message:
             await channel.send(message)
         return web.Response(text="Okay")
