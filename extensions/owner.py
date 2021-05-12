@@ -234,8 +234,8 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
 
         # Do this because I'm too lazy to type cogs.module
         module = module.lower()
-        if not module.startswith("cogs"):
-            module = "cogs.{}".format(module)
+        if not module.startswith("extensions"):
+            module = "extensions.{}".format(module)
 
         # This try catch will catch errors such as syntax errors in the module we are loading
         ctx.bot.load_extension(module)
