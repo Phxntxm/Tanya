@@ -5,6 +5,7 @@ class Mafia(commands.Cog):
     games = {}
     # Useful for restarting a game, or getting info on the last game
     previous_games = {}
+    debug_game = None
 
     @commands.group(invoke_without_command=True)
     async def mafia(self, ctx):
@@ -70,9 +71,10 @@ class Mafia(commands.Cog):
 
         await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
 
-    @mafia.command(name="debug")
+    @mafia.group(name="debug", invoke_without_command=True)
     @commands.is_owner()
     @commands.guild_only()
+    @commands.max_concurrency(1, per=commands.BucketType.guild)
     async def mafia_debug(self, ctx):
         """Sets up a game with 5 players, all the author. Allows you to pick roles still"""
         amount_of_specials = [(k, 0) for k in ctx.bot.__special_roles__]
@@ -107,7 +109,22 @@ class Mafia(commands.Cog):
             ctx.author,
             ctx.author,
         ]
-        await game._start()
+        task = ctx.bot.loop.create_task(game.start())
+        self.debug_task = (task, game)
+        await task
+
+    @mafia_debug.command(name="stop")
+    @commands.is_owner()
+    @commands.guild_only()
+    @commands.max_concurrency(1, per=commands.BucketType.guild)
+    async def mafia_stop_debug(self, ctx):
+        """Stops the debug game of Mafia"""
+        if self.debug_task is not None:
+            task, game = self.debug_task
+            task.cancel()
+            await game.cleanup_channels()
+
+        await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
 
     @mafia_start.error
     async def clean_mafia_games(self, ctx, error):
