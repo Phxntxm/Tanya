@@ -15,7 +15,7 @@ class MafiaPages(menus.ListPageSource):
             elif arg[0].is_independent:
                 return 2
 
-        data = data.sort(key=sort_func)
+        data.sort(key=sort_func)
 
         super().__init__(data, per_page=5)
 
