@@ -5,6 +5,17 @@ from discord.ext import menus
 class MafiaPages(menus.ListPageSource):
     def __init__(self, data, ctx):
         self.ctx = ctx
+
+        def sort_func(arg):
+            if arg[0].is_citizen:
+                return 0
+            elif arg[0].is_mafia:
+                return 1
+            elif arg[0].is_independent:
+                return 2
+
+        data = sorted(data, key=sort_func)
+
         super().__init__(data, per_page=5)
 
     async def format_page(self, menu, entries):
@@ -13,10 +24,16 @@ class MafiaPages(menus.ListPageSource):
             description="Choose the corresponding emote to the role you want to modify, "
             "then provide the amount you want this role to have\n\n",
         )
-        embed.description += "\n".join(
-            f"{self.ctx.bot.to_keycap(count)} **{role.__name__} - {'Citizens' if role.is_citizen else 'Mafia'}**: {amt}"
-            for count, (role, amt) in enumerate(entries)
-        )
+        for count, (role, amt) in enumerate(entries):
+            emoji = {self.ctx.bot.to_keycap(count)}
+            role_type = "Unknown"
+            if role.is_citizen:
+                role_type = "Citizen"
+            elif role.is_mafia:
+                role_type = "Mafia"
+            elif role.is_independent:
+                role_type = "Independent"
+            embed.description += f"{emoji} **{role.__name__}**({role_type})"
         return embed
 
 

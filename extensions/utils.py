@@ -86,6 +86,24 @@ def nomination_check(game, nominations, channel, mafia=False):
     return check
 
 
+def private_channel_check(game, player, can_choose_self=False):
+    def check(m):
+        # Only care about messages from the author in their channel
+        if m.channel != player.channel:
+            return False
+        elif m.author != player.member:
+            return False
+        # Set the player for use after
+        p = discord.utils.get(game.players, member__name=m.content)
+        # Doctor cannot save themselves
+        if not can_choose_self and player == p:
+            game.ctx.bot.loop.create_task(p.channel.send("You cannot save yourself"))
+        elif player is not None:
+            return True
+
+    return check
+
+
 async def log_error(error, bot, ctx=None):
     # Format the error message
     fmt = f"""```
@@ -121,6 +139,7 @@ def setup(bot):
     bot.to_keycap = to_keycap
     bot.get_mafia_player = get_mafia_player
     bot.nomination_check = nomination_check
+    bot.private_channel_check = private_channel_check
 
 
 def teardown(bot):
@@ -129,3 +148,4 @@ def teardown(bot):
     del bot.to_keycap
     del bot.get_mafia_player
     del bot.nomination_check
+    del bot.private_channel_check

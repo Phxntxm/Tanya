@@ -4,6 +4,7 @@ import dataclasses
 import discord
 from discord.ext import commands
 import random
+import typing
 
 
 default_role_overwrites = discord.PermissionOverwrite(
@@ -32,8 +33,8 @@ user_overwrites = discord.PermissionOverwrite(read_messages=True)
 class MafiaGameConfig:
     starting_mafia: int
     starting_citizens: int
-    special_mafia: []
-    special_citizens: []
+    special_mafia: typing.List
+    special_citizens: typing.List
     ctx: commands.Context
     night_length: int = 60
     day_length: int = 120
@@ -45,7 +46,9 @@ class MafiaGame:
         self._members = None
         # The actual players of the game
         self.players = []
+
         self.ctx = ctx
+        self.is_day = True
 
         # Different chats needed
         self.chat = None
@@ -55,7 +58,7 @@ class MafiaGame:
 
         self._rand = random.SystemRandom()
         self._config = None
-        self._day = 0
+        self._day = 1
         self._day_notifications = {}
         self._role_list = None
 
@@ -88,12 +91,12 @@ class MafiaGame:
         )
         await self.info.send(embed=embed)
 
-    async def day_notification(self, *notifications: str, first=False):
+    async def day_notification(self, *notifications: str):
         """Creates a notification embed with all of todays notifications"""
         msg, current_notifications = self._day_notifications.get(self._day, (None, []))
         current_notifications.extend(notifications)
         fmt = ""
-        if not first:
+        if self._day > 1:
             fmt += f"**Type >>nominate member to nominate someone to be lynched**. Chat in {self.chat.mention}\n\n"
         fmt += "**Recent Actions**\n"
         fmt += "\n -".join(current_notifications)
@@ -122,14 +125,11 @@ class MafiaGame:
         else:
             await self._role_list.edit(content=msg)
 
-    def mafia_win_check(self, day=False):
-        if day:
-            return self.total_mafia >= self.total_alive / 2
-        else:
-            return self.total_mafia > self.total_alive / 2
-
-    def citizen_win_check(self):
-        return self.total_mafia == 0
+    def check_winner(self):
+        """Loops through all the winners and checks their win conditions"""
+        for player in self.players:
+            if player.win_condition(self):
+                return player
 
     async def pick_players(self):
         # I'm paranoid
@@ -232,11 +232,7 @@ class MafiaGame:
                     topic=f"Your role is {player}",
                 )
                 player.set_channel(current_channel)
-                msg = await current_channel.send(
-                    f"Your role is {player}\n\n"
-                    "You can use this channel for notes. If your role has a special action "
-                    "that happens during day/night it will be asked here"
-                )
+                msg = await current_channel.send(player.startup_channel_message(self))
                 await msg.pin()
 
     async def lock_chat_channel(self):
@@ -260,10 +256,16 @@ class MafiaGame:
         )
 
     async def play(self):
+        """Handles the preparation and the playing of the game"""
         await self._prepare()
         await self._start()
 
+    async def redo(self):
+        await self.cleanup_channels()
+        await self.start()
+
     async def _prepare(self):
+        """All the setup needed for the game to play"""
         # Variables just for easy setting for testing
         wait_length_for_players_to_join = 60
         minimum_players_needed = 3
@@ -406,54 +408,42 @@ class MafiaGame:
         )
         self._members = game_players
 
+    async def _cycle(self):
+        """Performs one cycle of day/night"""
+        # Do day tasks and check for winner
+        await self.pre_day()
+        if winner := self.check_winner():
+            await self.chat.send(f"Winner: {winner}!. (Will remove game in 1 minute)")
+            return True
+        await self.day_tasks()
+        if winner := self.check_winner():
+            await self.chat.send(f"Winner: {winner}!. (Will remove game in 1 minute)")
+            return True
+        # Do night tasks and check for winner
+        await self.night_tasks()
+        if winner := self.check_winner():
+            await self.chat.send(f"Winner: {winner}!. (Will remove game in 1 minute)")
+            return True
+
+        self._day += 1
+
     async def _start(self):
+        """Play the game"""
         # Sort out the players
         await self.pick_players()
         # Setup the categories and channels
         await self.setup_channels()
-        # Now play the game, doing night/day tasks
-        self._day += 1
-        await self.day_tasks(first=True)
         while True:
-            # Check for winners
-            if self.citizen_win_check():
-                await self.chat.send(
-                    "Citizens have won!! (Will remove game in 1 minute)"
-                )
-                await self.unlock_chat_channel()
+            if await self._cycle():
                 break
-            elif self.mafia_win_check(day=True):
-                await self.chat.send("Mafia has won!! (Will remove game in 1 minute)")
-                await self.unlock_chat_channel()
-                break
-            # If no one has won, continue on to night tasks
-            await self.night_tasks()
-            self._day += 1
-            # I'm going to add a shit ton of special roles, maybe there's one
-            # that can get rid of mafia during the night, so lets just be safe
-            # and check here as well
-            if self.citizen_win_check():
-                await self.chat.send(
-                    "Citizens have won!! (Will remove game in 1 minute)"
-                )
-                await self.unlock_chat_channel()
-                break
-            elif self.mafia_win_check():
-                await self.chat.send("Mafia has won!! (Will remove game in 1 minute)")
-                await self.unlock_chat_channel()
-                break
-            await self.day_tasks()
+
+        # The game is done, allow dead players to chat again
         for player in self.players:
             if player.dead:
                 await self.chat.set_permissions(player.member, read_messages=True)
 
-        # Check which one won
-        if self.citizen_win_check():
-            msg = "Citizens won!\n\n"
-        else:
-            msg = "Mafia won!\n\n"
-
-        msg += "\n".join(
+        # Send a message with everyone's roles
+        msg = "\n".join(
             f"{player.member.display_name} ({player})" for player in self.players
         )
         await self.ctx.send(msg)
@@ -468,7 +458,7 @@ class MafiaGame:
         await self.night_notification()
         await self.lock_chat_channel()
         await self.unlock_mafia_channel()
-        # Schedule tasks. Add the asyncio sleep to *ensure* way sleep that long
+        # Schedule tasks. Add the asyncio sleep to *ensure* we sleep that long
         # even if everyone finishes early
         tasks = [asyncio.sleep(self._config.night_length)]
         msg = "\n".join(
@@ -479,7 +469,7 @@ class MafiaGame:
         nominations = {}
 
         await self.mafia_chat.send(
-            "**Type >>nominate Member to nominate someone to be killed** Alive players are:\n"
+            "**Type `>>nominate Member` to nominate someone to be killed** Alive players are:\n"
             f"{msg}"
         )
 
@@ -533,13 +523,11 @@ class MafiaGame:
 
         await self.lock_mafia_channel()
 
-    async def day_tasks(self, first=False):
-        # The message that will be sent, we have a few things to add to it
-        # so we will set a var here, and add to it later
-        killed = []
+    async def pre_day(self):
+        # Check if anyone was killed
+        if self._day == 1:
+            killed = []
 
-        if not first:
-            day_length = self._config.day_length
             for player in self.players:
                 # Already dead people
                 if player.dead:
@@ -574,14 +562,15 @@ class MafiaGame:
 
             await self.day_notification(*notifs)
         else:
-            day_length = self._config.day_length / 2
-            await self.day_notification("Game has started!", first=True)
+            await self.day_notification("Game has started!")
 
-        # If the mafia won, don't do the rest of the stuff
-        if killed and self.mafia_win_check(day=True):
-            return
-        # Now that we've given the latest update, send
+        # Unlock the channel
         await self.unlock_chat_channel()
+
+    async def day_tasks(self):
+        day_length = (
+            self._config.day_length if self._day > 1 else self._config.day_length / 2
+        )
 
         # Ensure day takes this long no matter what
         async def day_sleep():
@@ -609,9 +598,9 @@ class MafiaGame:
             await msg.add_reaction("\N{THUMBS UP SIGN}")
             await msg.add_reaction("\N{THUMBS DOWN SIGN}")
 
-        if not first:
+        if self._day > 1:
             tasks.append(nominate_player())
-        done, pending = await asyncio.wait(
+        _, pending = await asyncio.wait(
             tasks, timeout=day_length, return_when=asyncio.ALL_COMPLETED
         )
         # Cancel pending tasks, times up
@@ -625,9 +614,11 @@ class MafiaGame:
             count = (
                 discord.utils.get(msg.reactions, emoji="\N{THUMBS UP SIGN}").count - 1
             )
+            # The lynching happened
             if count > self.total_alive / 2:
                 player = nominations["nomination"]
                 player.dead = True
+                player.lynched = True
                 await self.chat.set_permissions(
                     player.member, read_messages=True, send_messages=False
                 )
@@ -649,7 +640,7 @@ class MafiaGame:
                 await channel.delete()
 
             await category.delete()
-        except AttributeError:
+        except (AttributeError, discord.HTTPException):
             return
 
 
