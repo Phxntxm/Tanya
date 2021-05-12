@@ -102,7 +102,9 @@ class MafiaGame:
         embed = discord.Embed(
             title=f"Day {self._day}", description=fmt, colour=0xF6F823
         )
-        embed.set_thumbnail(url="http://clipart-library.com/img/765767.png")
+        embed.set_thumbnail(
+            url="https://media.discordapp.net/attachments/840698427755069475/841841923936485416/Sw5vSWOjshUo40xEj-hWqfiRu8Ma2CtYjjh7prRsF6ADPk_z7znpEBf-E3i44U9Hukh3ZJOFhm9S43naa4dEA8pXX4dfAJeEv0bl.png"
+        )
         embed.add_field(name="Alive", value=self.total_alive)
         embed.add_field(name="Dead", value=self.total_players - self.total_alive)
         embed.add_field(name="Mafia Remaining", value=self.total_mafia)
@@ -334,9 +336,13 @@ class MafiaGame:
 
         done, pending = await asyncio.wait(
             [
-                ctx.bot.wait_for("raw_reaction_add", check=check),
-                ctx.bot.wait_for("raw_reaction_remove", check=check),
-                join_event.wait(),
+                self.ctx.bot.loop.create_task(
+                    ctx.bot.wait_for("raw_reaction_add", check=check)
+                ),
+                self.ctx.bot.loop.create_task(
+                    ctx.bot.wait_for("raw_reaction_remove", check=check)
+                ),
+                self.ctx.bot.loop.create_task(join_event.wait()),
             ],
             return_when=asyncio.FIRST_COMPLETED,
             timeout=300,
@@ -437,7 +443,9 @@ class MafiaGame:
         await self.unlock_mafia_channel()
         # Schedule tasks. Add the asyncio sleep to *ensure* we sleep that long
         # even if everyone finishes early
-        tasks = [asyncio.sleep(self._config.night_length)]
+        tasks = [
+            self.ctx.bot.loop.create_task(asyncio.sleep(self._config.night_length))
+        ]
         msg = "\n".join(
             player.member.name
             for player in self.players
@@ -502,7 +510,7 @@ class MafiaGame:
 
     async def pre_day(self):
         # Check if anyone was killed
-        if self._day == 1:
+        if self._day > 1:
             killed = []
 
             for player in self.players:
@@ -555,7 +563,7 @@ class MafiaGame:
             await self.chat.send("Day is about to end in 20 seconds")
             await asyncio.sleep(20)
 
-        tasks = [day_sleep()]
+        tasks = [self.ctx.bot.loop.create_task(day_sleep())]
 
         nominations = {}
         msg = None
@@ -576,7 +584,7 @@ class MafiaGame:
             await msg.add_reaction("\N{THUMBS DOWN SIGN}")
 
         if self._day > 1:
-            tasks.append(nominate_player())
+            tasks.append(self.ctx.bot.loop.create_task(nominate_player()))
         _, pending = await asyncio.wait(
             tasks, timeout=day_length, return_when=asyncio.ALL_COMPLETED
         )
