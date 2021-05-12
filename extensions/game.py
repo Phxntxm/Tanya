@@ -143,7 +143,7 @@ class MafiaGame:
             member = self._members.pop()
             self.players.append(self.ctx.bot.mafia_role(member))
         # The rest are citizens
-        for member in self._member:
+        for member in self._members:
             self.players.append(self.ctx.bot.citizen_role(member))
 
     async def setup_channels(self):
