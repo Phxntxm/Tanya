@@ -32,7 +32,6 @@ user_overwrites = discord.PermissionOverwrite(read_messages=True)
 @dataclasses.dataclass
 class MafiaGameConfig:
     starting_mafia: int
-    starting_citizens: int
     special_roles: typing.List
     ctx: commands.Context
     night_length: int = 60

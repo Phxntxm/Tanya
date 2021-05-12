@@ -87,19 +87,7 @@ class Mafia(commands.Cog):
 
         game._config = ctx.bot.MafiaGameConfig(
             menu.amount_of_mafia,
-            menu.amount_of_citizens,
-            [
-                role
-                for (role, amt) in amount_of_specials
-                for i in range(amt)
-                if role.is_mafia
-            ],
-            [
-                role
-                for (role, amt) in amount_of_specials
-                for i in range(amt)
-                if role.is_citizen
-            ],
+            [role for (role, amt) in amount_of_specials for i in range(amt)],
             ctx,
         )
         game._members = [
