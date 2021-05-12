@@ -1,10 +1,10 @@
 import asyncio
 import discord
-from discord.ext import menus
+from discord.ext import menus, commands
 
 
 class MafiaPages(menus.ListPageSource):
-    def __init__(self, data, ctx):
+    def __init__(self, data: list, ctx: commands.Context):
         self.ctx = ctx
 
         def sort_func(arg):
@@ -15,11 +15,11 @@ class MafiaPages(menus.ListPageSource):
             elif arg[0].is_independent:
                 return 2
 
-        data = sorted(data, key=sort_func)
+        data = data.sort(key=sort_func)
 
         super().__init__(data, per_page=5)
 
-    async def format_page(self, menu, entries):
+    async def format_page(self, menu, entries: list):
         embed = discord.Embed(
             title="Choose special roles",
             description="Choose the corresponding emote to the role you want to modify, "

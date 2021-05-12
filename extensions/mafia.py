@@ -98,7 +98,7 @@ class Mafia(commands.Cog):
             ctx.author,
         ]
         task = ctx.bot.loop.create_task(game._start())
-        self.debug_task = (task, game)
+        self.debug_game = (task, game)
         await task
 
     @mafia_debug.command(name="stop")
@@ -107,11 +107,11 @@ class Mafia(commands.Cog):
     @commands.max_concurrency(1, per=commands.BucketType.guild)
     async def mafia_stop_debug(self, ctx):
         """Stops the debug game of Mafia"""
-        if self.debug_task is not None:
-            task, game = self.debug_task
+        if self.debug_game is not None:
+            task, game = self.debug_game
             task.cancel()
             await game.cleanup_channels()
-            self.debug_task = None
+            self.debug_game = None
 
         await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
 
