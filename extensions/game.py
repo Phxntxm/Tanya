@@ -33,8 +33,7 @@ user_overwrites = discord.PermissionOverwrite(read_messages=True)
 class MafiaGameConfig:
     starting_mafia: int
     starting_citizens: int
-    special_mafia: typing.List
-    special_citizens: typing.List
+    special_roles: typing.List
     ctx: commands.Context
     night_length: int = 60
     day_length: int = 120
@@ -43,24 +42,24 @@ class MafiaGameConfig:
 class MafiaGame:
     def __init__(self, ctx: commands.Context):
         # The discord members, we'll produce our list of players later
-        self._members = None
+        self._members: list = None
         # The actual players of the game
-        self.players = []
+        self.players: list = []
 
         self.ctx = ctx
-        self.is_day = True
+        self.is_day: bool = True
 
         # Different chats needed
-        self.chat = None
-        self.mafia_chat = None
-        self.info = None
-        self.dead_chat = None
+        self.chat: discord.TextChannel = None
+        self.mafia_chat: discord.TextChannel = None
+        self.info: discord.TextChannel = None
+        self.dead_chat: discord.TextChannel = None
 
         self._rand = random.SystemRandom()
-        self._config = None
-        self._day = 1
-        self._day_notifications = {}
-        self._role_list = None
+        self._config: MafiaGameConfig = None
+        self._day: int = 1
+        self._day_notifications: dict = {}
+        self._role_list: list = None
 
     @property
     def total_mafia(self):
@@ -135,29 +134,18 @@ class MafiaGame:
         # I'm paranoid
         for i in range(5):
             self._rand.shuffle(self._members)
-        # Set the mafia
-        for i in range(self._config.starting_mafia):
-            # Get the member that will be mafia
+        # Set special roles first
+        for role in self._config.special_roles:
+            # Get member that will have this role
             member = self._members.pop()
-            # If there's a special mafia, use that
-            if self._config.special_mafia:
-                self.players.append(self._config.special_mafia.pop()(member))
-            # Otherwise just a normal mafia member
-            else:
-                self.players.append(self.ctx.bot.mafia_role(member))
-
-            if member.guild_permissions.administrator:
-                await member.send(f"You have the role {self.players[-1]}")
-        # Now repeat with the citizens
-        for i in range(self._config.starting_citizens):
+            self.players.append(role(member))
+        # Then get the remaining normal mafia needed
+        for i in range(self._config.starting_mafia - self.total_mafia):
             member = self._members.pop()
-            if self._config.special_citizens:
-                self.players.append(self._config.special_citizens.pop()(member))
-            else:
-                self.players.append(self.ctx.bot.citizen_role(member))
-
-            if member.guild_permissions.administrator:
-                await member.send(f"You have the role {self.players[-1]}")
+            self.players.append(self.ctx.bot.mafia_role(member))
+        # The rest are citizens
+        for member in self._member:
+            self.players.append(self.ctx.bot.citizen_role(member))
 
     async def setup_channels(self):
         # Get category, create if it doesn't exist yet
@@ -392,18 +380,8 @@ class MafiaGame:
         self._config = ctx.bot.MafiaGameConfig(
             menu.amount_of_mafia,
             menu.amount_of_citizens,
-            [
-                role
-                for (role, amt) in amount_of_specials
-                for i in range(amt)
-                if role.is_mafia
-            ],
-            [
-                role
-                for (role, amt) in amount_of_specials
-                for i in range(amt)
-                if role.is_citizen
-            ],
+            # The special roles
+            [role for (role, amt) in amount_of_specials for i in range(amt)],
             ctx,
         )
         self._members = game_players
