@@ -115,7 +115,7 @@ class Sheriff(Citizen):
         # Handle what happens if their choice is right/wrong
         if player.is_citizen:
             self.kill(self)
-        elif player.is_mafia:
+        else:
             player.kill(self)
         await self.channel.send("\N{THUMBS UP SIGN}")
 
