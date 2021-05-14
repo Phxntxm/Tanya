@@ -69,6 +69,8 @@ def nomination_check(game, nominations, channel, mafia=False):
         except commands.MemberNotFound:
             return False
         else:
+            if player.is_mafia:
+                return False
             # Increment their nomination
             nominations[player] = nominations.get(player, 0) + 1
             # If their nomination meets what's needed, set the player
