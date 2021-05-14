@@ -9,8 +9,8 @@ class Player:
     channel: discord.TextChannel = None
     # Dead is for someone who has been dead
     dead: bool = False
-    # Killed is for someone who was just killed this night
-    killed: bool = False
+    # Use the player that killed them to allow checking properly
+    killed_by = None
     lynched: bool = False
     saved_for_tonight = False
     # Needed to check win condition for mafia during day, before they kill
@@ -90,8 +90,10 @@ class Doctor(Citizen):
 
 
 class Sheriff(Citizen):
-    description = "Your win condition is lynching all mafia. During the night you can choose one person to shoot. "
-    "If they are mafia, they will die... however if they are a citizen, you die instead"
+    description = (
+        "Your win condition is lynching all mafia. During the night you can choose one person to shoot. "
+        "If they are mafia, they will die... however if they are a citizen, you die instead"
+    )
 
     async def night_task(self, game):
         # Get everyone alive that isn't ourselves
@@ -111,14 +113,8 @@ class Sheriff(Citizen):
         # Handle what happens if their choice is right/wrong
         if player.is_citizen or player.is_independent:
             self.kill()
-            game.add_day_notification(
-                f"- {self.member.display_name} ({self}) tried to shoot an innocent and died instead"
-            )
         elif player.is_mafia:
             player.kill()
-            game.add_day_notification(
-                f"- {self} Killed {player.member.display_name} ({player})"
-            )
         await self.channel.send("\N{THUMBS UP SIGN}")
 
 
@@ -179,9 +175,9 @@ class Mafia(Player):
             ):
                 return False
             else:
-                return game.total_mafia >= game.total_players / 2
+                return game.total_mafia >= game.total_alive / 2
         else:
-            return game.total_mafia > game.total_players / 2
+            return game.total_mafia > game.total_alive / 2
 
 
 class Independent(Player):
@@ -191,10 +187,10 @@ class Independent(Player):
 class Jester(Independent):
     limit = 1
 
-    description = "Your win condition is getting lynched or killed"
+    description = "Your win condition is getting lynched or killed by the innocent"
 
     def win_condition(self, game):
-        return self.dead
+        return self.lynched or not self.killer.is_mafia
 
 
 # Sidelined for now, I don't get this role. Seems dumb if their target is mafia

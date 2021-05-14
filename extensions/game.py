@@ -1,6 +1,7 @@
 import asyncio
 import collections
 import dataclasses
+from extensions.players import Sheriff
 import discord
 from discord.ext import commands
 import random
@@ -519,6 +520,7 @@ class MafiaGame:
 
     async def pre_day(self):
         # Check if anyone was killed
+        notifs = []
         if self._day > 1:
             killed = []
 
@@ -526,32 +528,45 @@ class MafiaGame:
                 # Already dead people
                 if player.dead:
                     continue
-                # If saved, they can't have been killed
-                if player.saved_for_tonight:
-                    player.saved_for_tonight = False
-                    player.killed = False
-                if player.killed:
-                    player.dead = True
-                    killed.append(player)
-                    # This will permanently disable them from talking
-                    await self.chat.set_permissions(
-                        player.member, read_messages=True, send_messages=False
-                    )
-                    if player.channel:
-                        await player.channel.set_permissions(
+                # If they were killed by someone
+                if killer := player.killed_by:
+                    # Handle sheriff killing themselves
+                    if killer == player and isinstance(player, Sheriff):
+                        notifs.append(
+                            f"- {player.member.display_name} ({player}) tried to shoot an innocent and died instead"
+                        )
+                    # If saved, they can't be killed
+                    if player.saved_for_tonight:
+                        player.saved_for_tonight = False
+                        await player.chat.send("You were saved by the doctor!")
+                        if killer.is_mafia:
+                            await self.mafia_chat.send(
+                                "{player} was saved by the doctor!"
+                            )
+                    else:
+                        # Notify of their killer's role
+                        notifs.append(
+                            f"{player.member.display_name} ({player}) was killed by {killer}"
+                        )
+                        # Make sure to set their attributes right
+                        player.killed = False
+                        player.dead = True
+                        # Just to check if someone was killed
+                        killed.append(player)
+                        # This will permanently disable them from talking
+                        await self.chat.set_permissions(
                             player.member, read_messages=True, send_messages=False
                         )
+                        if player.channel:
+                            await player.channel.set_permissions(
+                                player.member, read_messages=True, send_messages=False
+                            )
+                        if player.is_mafia:
+                            await self.mafia_chat.set_permissions(
+                                player.member, read_messages=True, send_messages=False
+                            )
 
-            notifs = []
-            if killed:
-                for player in killed:
-                    notifs.append(
-                        f"{player.member.mention}({player}) was slain by the mafia"
-                    )
-                    await self.dead_chat.set_permissions(
-                        player.member, read_messages=True
-                    )
-            else:
+            if not killed:
                 notifs.append("No one was killed last night!")
 
             await self.day_notification(*notifs)
@@ -618,6 +633,10 @@ class MafiaGame:
                 )
                 if player.channel:
                     await player.channel.set_permissions(
+                        player.member, read_messages=True, send_messages=False
+                    )
+                if player.is_mafia:
+                    await self.mafia_chat.set_permissions(
                         player.member, read_messages=True, send_messages=False
                     )
                 await self.day_notification(
