@@ -57,7 +57,7 @@ class MafiaGame:
         self._rand = random.SystemRandom()
         self._config: MafiaGameConfig = None
         self._day: int = 1
-        self._day_notifications: collections.defaultdict(list)
+        self._day_notifications = collections.defaultdict(list)
         self._role_list: list = None
 
     @property
