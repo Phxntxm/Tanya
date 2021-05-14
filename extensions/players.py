@@ -112,12 +112,12 @@ class Sheriff(Citizen):
         if player.is_citizen or player.is_independent:
             self.kill()
             game.add_day_notification(
-                f"{self.member.display_name} ({self}) tried to shoot an innocent and died instead"
+                f"- {self.member.display_name} ({self}) tried to shoot an innocent and died instead"
             )
         elif player.is_mafia:
             player.kill()
             game.add_day_notification(
-                f"{self} Killed {player.member.display_name} ({player})"
+                f"- {self} Killed {player.member.display_name} ({player})"
             )
         await self.channel.send("\N{THUMBS UP SIGN}")
 
@@ -191,10 +191,10 @@ class Independent(Player):
 class Jester(Independent):
     limit = 1
 
-    description = "Your win condition is getting lynched by town"
+    description = "Your win condition is getting lynched or killed"
 
     def win_condition(self, game):
-        return self.lynched
+        return self.dead
 
 
 # Sidelined for now, I don't get this role. Seems dumb if their target is mafia
