@@ -36,8 +36,8 @@ class Player:
     def save(self):
         self.saved_for_tonight = True
 
-    def kill(self):
-        self.killed = True
+    def kill(self, by):
+        self.killed_by = by
 
     async def lock_channel(self):
         if self.channel:
@@ -112,9 +112,9 @@ class Sheriff(Citizen):
 
         # Handle what happens if their choice is right/wrong
         if player.is_citizen:
-            self.kill()
+            self.kill(self)
         elif player.is_mafia:
-            player.kill()
+            player.kill(self)
         await self.channel.send("\N{THUMBS UP SIGN}")
 
 
