@@ -55,6 +55,9 @@ class MafiaGame:
         self.info: discord.TextChannel = None
         self.dead_chat: discord.TextChannel = None
 
+        self._alive_game_role_name: str = "Alive Player"
+        self._alive_game_role: discord.Role = None
+
         self._rand = random.SystemRandom()
         self._config: MafiaGameConfig = None
         self._day: int = 1
@@ -267,6 +270,14 @@ class MafiaGame:
         minimum_players_needed = 3
 
         ctx = self.ctx
+        # Get/create the role
+        self._alive_game_role = discord.utils.get(
+            ctx.guild.roles, name=self._alive_game_role_name
+        )
+        if self._alive_game_role is None:
+            self._alive_game_role = await ctx.guild.create_role(
+                self._alive_game_role_name, hoist=True
+            )
         amount_of_specials = [(k, 0) for k in ctx.bot.__special_roles__]
         menu = ctx.bot.MafiaMenu(source=ctx.bot.MafiaPages(amount_of_specials, ctx))
         # Get max players
@@ -396,6 +407,9 @@ class MafiaGame:
             ctx,
         )
         self._members = game_players
+
+        for member in self._members:
+            await member.add_roles(self._alive_game_role)
 
     async def _cycle(self):
         """Performs one cycle of day/night"""
@@ -552,6 +566,7 @@ class MafiaGame:
                         # Make sure to set their attributes right
                         player.killed = False
                         player.dead = True
+                        await player.member.remove_roles(self._alive_game_role)
                         # Just to check if someone was killed
                         killed.append(player)
                         # This will permanently disable them from talking
@@ -643,6 +658,7 @@ class MafiaGame:
                 await self.day_notification(
                     f"The town lynched **{player.member.display_name}**({player})"
                 )
+                await player.member.remove_roles(self._alive_game_role)
                 await self.dead_chat.set_permissions(player.member, read_messages=True)
 
         await self.lock_chat_channel()
