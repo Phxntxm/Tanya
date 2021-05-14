@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import re
 import traceback
+from fuzzywuzzy import process
 
 
 def get_mafia_player(game, arg):
@@ -13,9 +14,11 @@ def get_mafia_player(game, arg):
     players = game.players
     match = re.match(r"([0-9]{15,20})$", arg) or re.match(r"<@!?([0-9]{15,20})>$", arg)
     if match is None:
-        result = discord.utils.get(players, member__name=arg)
-        if not result:
-            result = discord.utils.get(players, member__display_name=arg)
+        choices = {player: player.member.name for player in game.players}
+        best = process.extractBests(arg, choices, score_cutoff=80, limit=1)
+
+        if best:
+            result = best[0][2]
     else:
         user_id = int(match.group(1))
         result = discord.utils.get(players, member__id=user_id)
@@ -101,12 +104,36 @@ def private_channel_check(game, player, can_choose_self=False):
         elif m.author != player.member:
             return False
         # Set the player for use after
-        p = discord.utils.get(game.players, member__name=m.content)
+        try:
+            p = game.ctx.bot.get_mafia_player(game, m.content)
+        except commands.MemberNotFound:
+            return False
         # Check the choosing self
         if not can_choose_self and player == p:
             game.ctx.bot.loop.create_task(p.channel.send("You cannot save yourself"))
         elif p is not None:
             return True
+
+    return check
+
+
+def mafia_kill_check(game):
+    def check(m):
+        # Only care about messages from the author in their channel
+        if m.channel != game.mafia_channel:
+            return False
+        elif m.author != game.godfather.member:
+            return False
+        # Set the player for use after
+        try:
+            p = game.ctx.bot.get_mafia_player(game, m.content)
+        except commands.MemberNotFound:
+            return False
+        else:
+            if p.is_mafia:
+                return False
+            else:
+                return True
 
     return check
 
@@ -147,6 +174,7 @@ def setup(bot):
     bot.get_mafia_player = get_mafia_player
     bot.nomination_check = nomination_check
     bot.private_channel_check = private_channel_check
+    bot.mafia_kill_check = mafia_kill_check
 
 
 def teardown(bot):
@@ -156,3 +184,4 @@ def teardown(bot):
     del bot.get_mafia_player
     del bot.nomination_check
     del bot.private_channel_check
+    del bot.mafia_kill_check

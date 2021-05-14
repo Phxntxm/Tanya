@@ -2,6 +2,20 @@ import asyncio
 from discord.ext import commands
 
 
+def stop_check():
+    def predicate(ctx):
+        game = ctx.bot.get_cog("Mafia").games.get(ctx.guild.id)
+
+        if game and (
+            ctx.author.guild_permissions.manage_channels
+            or ctx.author == game[1].ctx.author
+        ):
+            return True
+        return False
+
+    return commands.check(predicate)
+
+
 class Mafia(commands.Cog):
     games = {}
     # Useful for restarting a game, or getting info on the last game
@@ -60,8 +74,8 @@ class Mafia(commands.Cog):
 
         await ctx.send("\N{THUMBS UP SIGN}")
 
-    @mafia.command(name="stop")
-    @commands.has_permissions(manage_channels=True)
+    @mafia.command(name="stop", aliases=["cancel"])
+    @stop_check()
     @commands.guild_only()
     async def mafia_stop(self, ctx):
         """Stops an ongoing game of Mafia"""

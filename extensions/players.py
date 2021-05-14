@@ -6,6 +6,7 @@ class Player:
     is_mafia: bool = False
     is_citizen: bool = False
     is_independent: bool = False
+    is_godfather: bool = False
     channel: discord.TextChannel = None
     # Dead is for someone who has been dead
     dead: bool = False
@@ -86,7 +87,7 @@ class Doctor(Citizen):
         msg = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self)
         )
-        player = discord.utils.get(game.players, member__name=msg.content)
+        player = game.ctx.bot.get_mafia_player(msg.content)
         player.save()
         await self.channel.send("\N{THUMBS UP SIGN}")
 
@@ -96,6 +97,7 @@ class Sheriff(Citizen):
         "Your win condition is lynching all mafia. During the night you can choose one person to shoot. "
         "If they are mafia, they will die... however if they are a citizen, you die instead"
     )
+    can_kill_mafia_at_night = True
 
     async def night_task(self, game):
         # Get everyone alive that isn't ourselves
@@ -110,7 +112,7 @@ class Sheriff(Citizen):
         msg = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self)
         )
-        player = discord.utils.get(game.players, member__name=msg.content)
+        player = game.ctx.bot.get_mafia_player(msg.content)
 
         # Handle what happens if their choice is right/wrong
         if player.is_citizen:
@@ -138,11 +140,12 @@ class PI(Citizen):
         msg1 = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self, True)
         )
+        await msg1.add_reaction("\N{THUMBS UP SIGN}")
         msg2 = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self, True)
         )
-        player1 = discord.utils.get(game.players, member__name=msg1.content)
-        player2 = discord.utils.get(game.players, member__name=msg2.content)
+        player1 = game.ctx.bot.get_mafia_player(msg1.content)
+        player2 = game.ctx.bot.get_mafia_player(msg2.content)
 
         # If we're here then the message happened twice, meaning we have two people
         if (
@@ -180,6 +183,10 @@ class Mafia(Player):
                 return game.total_mafia >= game.total_alive / 2
         else:
             return game.total_mafia > game.total_alive / 2
+
+
+class Godfather(Mafia):
+    pass
 
 
 class Independent(Player):

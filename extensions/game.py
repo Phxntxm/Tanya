@@ -1,7 +1,6 @@
 import asyncio
 import collections
 import dataclasses
-from extensions.players import Sheriff
 import discord
 from discord.ext import commands
 import random
@@ -35,8 +34,8 @@ class MafiaGameConfig:
     starting_mafia: int
     special_roles: typing.List
     ctx: commands.Context
-    night_length: int = 60
-    day_length: int = 120
+    night_length: int = 45
+    day_length: int = 90
 
 
 class MafiaGame:
@@ -82,6 +81,12 @@ class MafiaGame:
     def total_players(self):
         return len(self.players)
 
+    @property
+    def godfather(self):
+        for player in self.players:
+            if player.is_godfather:
+                return player
+
     async def night_notification(self):
         embed = discord.Embed(
             title=f"Night {self._day - 1}",
@@ -103,11 +108,20 @@ class MafiaGame:
         """Creates a notification embed with all of todays notifications"""
         msg, current_notifications = self._day_notifications.get(self._day, (None, []))
         current_notifications.extend(notifications)
-        fmt = ""
+        fmt = "Roles Alive:\n"
+        # Get alive players to add to alive roles
+        alive_players = {}
+        for player in self.players:
+            if player.dead:
+                continue
+            alive_players[str(player)] = alive_players.get(str(player), 0) + 1
+        fmt += "\n".join(f"{key}: {count}" for key, count in alive_players.items())
+        # If we're not on day one, notify that you can nominate
         if self._day > 1:
             fmt += f"**Type >>nominate member to nominate someone to be lynched**. Chat in {self.chat.mention}\n\n"
+        # Add the recent actions
         fmt += "**Recent Actions**\n"
-        fmt += "\n -".join(current_notifications)
+        fmt += "\n".join(current_notifications)
 
         embed = discord.Embed(
             title=f"Day {self._day}", description=fmt, colour=0xF6F823
@@ -115,9 +129,6 @@ class MafiaGame:
         embed.set_thumbnail(
             url="https://media.discordapp.net/attachments/840698427755069475/841841923936485416/Sw5vSWOjshUo40xEj-hWqfiRu8Ma2CtYjjh7prRsF6ADPk_z7znpEBf-E3i44U9Hukh3ZJOFhm9S43naa4dEA8pXX4dfAJeEv0bl.png"
         )
-        embed.add_field(name="Alive", value=self.total_alive)
-        embed.add_field(name="Dead", value=self.total_players - self.total_alive)
-        embed.add_field(name="Mafia Remaining", value=self.total_mafia)
         if msg is None:
             msg = await self.info.send(content="@here", embed=embed)
         else:
@@ -152,6 +163,14 @@ class MafiaGame:
 
         return False
 
+    async def choose_godfather(self):
+        godfather = self._rand.choice(
+            p for p in self.players if p.is_mafia and not p.dead
+        )
+        godfather.is_godfather = True
+
+        await godfather.channel.send("You are the godfather!")
+
     async def pick_players(self):
         # I'm paranoid
         for i in range(5):
@@ -166,7 +185,8 @@ class MafiaGame:
             member = self._members.pop()
             self.players.append(self.ctx.bot.mafia_role(member))
         # The rest are citizens
-        for member in self._members:
+        while self._members:
+            member = self._members.pop()
             self.players.append(self.ctx.bot.citizen_role(member))
 
     async def setup_channels(self):
@@ -222,7 +242,6 @@ class MafiaGame:
                     player, overwrites=overwrite
                 )
                 self.chat = current_channel
-                await current_channel.send("@here The game is about to start")
             elif player == "info":
                 current_channel = await category.create_text_channel(
                     player, overwrites=overwrite
@@ -272,7 +291,7 @@ class MafiaGame:
 
     async def redo(self):
         await self.cleanup_channels()
-        await self.start()
+        await self._start()
 
     async def _prepare(self):
         """All the setup needed for the game to play"""
@@ -308,80 +327,95 @@ class MafiaGame:
         )
         min_players = int(answer.content)
 
-        # Now start waiting for the players to actually join
-        embed = discord.Embed(
-            title="Mafia game!",
-            description=f"Press \N{WHITE HEAVY CHECK MARK} to join! Waiting till at least {min_players} join. "
-            f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
-            thumbnail=ctx.guild.icon_url,
-        )
         game_players = set()
-        embed.set_footer(text=f"{len(game_players)}/{min_players} Needed to join")
-        msg = await ctx.send(embed=embed)
-        await msg.add_reaction("\N{WHITE HEAVY CHECK MARK}")
 
-        timer_not_started = True
-        # Start the event here so that the update can use it
-        join_event = asyncio.Event()
-
-        async def update_embed(start_timeout=False):
-            if start_timeout:
-                nonlocal timer_not_started
-                timer_not_started = False
-                embed.description += f"\n\nMin players reached! Players locked in, waiting {wait_length_for_players_to_join} seconds or till max players reached"
-                embed.set_footer(
-                    text=f"{len(game_players)}/{min_players} Needed to join"
-                )
-                await msg.edit(embed=embed)
-                await asyncio.sleep(wait_length_for_players_to_join)
-                join_event.set()
-            else:
-                embed.set_footer(
-                    text=f"{len(game_players)}/{min_players} Needed to join"
-                )
-                await msg.edit(embed=embed)
-
-        def check(p):
-            # First don't accept any reactions that aren't actually people joining/leaving
-            if p.message_id != msg.id:
-                return False
-            if str(p.emoji) != "\N{WHITE HEAVY CHECK MARK}":
-                return False
-            if p.user_id == ctx.bot.user.id:
-                return False
-            if p.event_type == "REACTION_ADD":
-                game_players.add(p.user_id)
-                # If we've hit the max, finish
-                if len(game_players) == max_players:
-                    return True
-            # Only allow people to leave if we haven't hit the min
-            if p.event_type == "REACTION_REMOVE" and timer_not_started:
-                game_players.remove(p.user_id)
-            ctx.bot.loop.create_task(
-                update_embed(
-                    start_timeout=len(game_players) == min_players and timer_not_started
-                )
+        async def wait_for_players():
+            nonlocal game_players
+            game_players = set()
+            # Now start waiting for the players to actually join
+            embed = discord.Embed(
+                title="Mafia game!",
+                description=f"Press \N{WHITE HEAVY CHECK MARK} to join! Waiting till at least {min_players} join. "
+                f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
+                thumbnail=ctx.guild.icon_url,
             )
+            embed.set_footer(text=f"{len(game_players)}/{min_players} Needed to join")
+            msg = await ctx.send(embed=embed)
+            await msg.add_reaction("\N{WHITE HEAVY CHECK MARK}")
 
-        done, pending = await asyncio.wait(
-            [
-                self.ctx.bot.loop.create_task(
-                    ctx.bot.wait_for("raw_reaction_add", check=check)
-                ),
-                self.ctx.bot.loop.create_task(
-                    ctx.bot.wait_for("raw_reaction_remove", check=check)
-                ),
-                self.ctx.bot.loop.create_task(join_event.wait()),
-            ],
-            return_when=asyncio.FIRST_COMPLETED,
-            timeout=300,
-        )
-        # If nothing was done, then the timeout happened
-        if not done:
-            raise asyncio.TimeoutError()
+            timer_not_started = True
+            # Start the event here so that the update can use it
+            join_event = asyncio.Event()
 
-        for task in pending:
-            task.cancel()
+            async def update_embed(start_timeout=False):
+                if start_timeout:
+                    nonlocal timer_not_started
+                    timer_not_started = False
+                    embed.description += f"\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players reached"
+                    embed.set_footer(
+                        text=f"{len(game_players)}/{min_players} Needed to join"
+                    )
+                    await msg.edit(embed=embed)
+                    await asyncio.sleep(wait_length_for_players_to_join)
+                    join_event.set()
+                else:
+                    embed.set_footer(
+                        text=f"{len(game_players)}/{min_players} Needed to join"
+                    )
+                    await msg.edit(embed=embed)
+
+            def check(p):
+                # First don't accept any reactions that aren't actually people joining/leaving
+                if p.message_id != msg.id:
+                    return False
+                if str(p.emoji) != "\N{WHITE HEAVY CHECK MARK}":
+                    return False
+                if p.user_id == ctx.bot.user.id:
+                    return False
+                if p.event_type == "REACTION_ADD":
+                    game_players.add(p.user_id)
+                    # If we've hit the max, finish
+                    if len(game_players) == max_players:
+                        return True
+                # Only allow people to leave if we haven't hit the min
+                if p.event_type == "REACTION_REMOVE":
+                    game_players.remove(p.user_id)
+                ctx.bot.loop.create_task(
+                    update_embed(
+                        start_timeout=len(game_players) == min_players
+                        and timer_not_started
+                    )
+                )
+
+            done, pending = await asyncio.wait(
+                [
+                    self.ctx.bot.loop.create_task(
+                        ctx.bot.wait_for("raw_reaction_add", check=check)
+                    ),
+                    self.ctx.bot.loop.create_task(
+                        ctx.bot.wait_for("raw_reaction_remove", check=check)
+                    ),
+                    self.ctx.bot.loop.create_task(join_event.wait()),
+                ],
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=300,
+            )
+            # If nothing was done, then the timeout happened
+            if not done:
+                raise asyncio.TimeoutError()
+
+            for task in pending:
+                task.cancel()
+
+            return len(game_players) >= min
+
+        for i in range(5):
+            if await wait_for_players():
+                break
+
+        if len(game_players) < min:
+            await ctx.send("Failed to get players too many times")
+            raise Exception()
 
         # Get the member objects
         game_players = await ctx.guild.query_members(user_ids=list(game_players))
@@ -398,7 +432,7 @@ class MafiaGame:
 
         # Now do the handling of roles
         # Get amount of Mafia
-        msg = await ctx.send(
+        await ctx.send(
             f"How many mafia members (including special mafia members; Between 1 and {int(len(game_players) / 2)})?"
         )
         answer = await ctx.bot.wait_for(
@@ -443,6 +477,9 @@ class MafiaGame:
         await self.pick_players()
         # Setup the categories and channels
         await self.setup_channels()
+        # Now choose the godfather
+        await self.choose_godfather()
+
         while True:
             if await self._cycle():
                 break
@@ -481,32 +518,19 @@ class MafiaGame:
         nominations = {}
 
         await self.mafia_chat.send(
-            "**Type `>>nominate Member` to nominate someone to be killed** Alive players are:\n"
+            "**Godfather:** Type the member's name to kill someone. Alive players are:\n"
             f"{msg}"
         )
 
-        # We need the actual message object, so that we can count reactions on it after
-        msg = None
-
-        async def nominate_player():
-            nonlocal msg
-            await self.ctx.bot.wait_for(
+        async def mafia_check():
+            msg = await self.ctx.bot.wait_for(
                 "message",
-                check=self.ctx.bot.nomination_check(
-                    self, nominations, self.mafia_chat, True
-                ),
+                check=self.ctx.bot.mafia_kill_check(self),
             )
-            player = nominations["nomination"]
-            # If we've passed to here that's two nominations
-            msg = await self.mafia_chat.send(
-                f"{player.member.display_name} is nominated for killing! React to vote. "
-                "By the end of the night, all the votes will be tallied. If majority voted yes, they "
-                "will be killed"
-            )
-            await msg.add_reaction("\N{THUMBS UP SIGN}")
-            await msg.add_reaction("\N{THUMBS DOWN SIGN}")
+            player = self.ctx.bot.get_mafia_player(msg.content)
+            player.kill(self.godfather)
 
-        tasks.append(nominate_player())
+        tasks.append(mafia_check())
 
         for p in self.players:
             # Dead players can't do shit
@@ -521,25 +545,6 @@ class MafiaGame:
         # Cancel pending tasks, times up
         for task in pending:
             task.cancel()
-
-        # Now check for the nominated player, if it's here then there was a killing vote
-        if msg:
-            # Reactions aren't updated in place, need to refetch
-            msg = await msg.channel.fetch_message(msg.id)
-            reaction = discord.utils.get(msg.reactions, emoji="\N{THUMBS UP SIGN}")
-            count = 0
-            async for user in reaction.users():
-                if (
-                    game_player := discord.utils.get(self.players, member=user)
-                ) and not game_player.dead:
-                    count += 1
-            player = nominations["nomination"]
-            if count > self.total_mafia / 2:
-                # Just for now a random mafia member as the person who does the killing
-                killer = random.choice(
-                    [m for m in self.players if m.is_mafia and not m.dead]
-                )
-                player.kill(killer)
 
         await self.lock_mafia_channel()
 
@@ -596,6 +601,10 @@ class MafiaGame:
                         await self.dead_chat.set_permissions(
                             player.member, read_messages=True
                         )
+                        # Now if they were godfather, choose new godfather
+                        if player.is_godfather:
+                            await self.choose_godfather()
+                            player.is_godfather = False
 
             if not killed:
                 notifs.append("- No one was killed last night!")
@@ -636,7 +645,6 @@ class MafiaGame:
                 "will be hung"
             )
             await msg.add_reaction("\N{THUMBS UP SIGN}")
-            await msg.add_reaction("\N{THUMBS DOWN SIGN}")
 
         if self._day > 1:
             tasks.append(self.ctx.bot.loop.create_task(nominate_player()))
@@ -670,6 +678,8 @@ class MafiaGame:
                     await self.mafia_chat.set_permissions(
                         player.member, read_messages=True, send_messages=False
                     )
+                    if player.is_godfather:
+                        await self.choose_godfather()
                 await self.day_notification(
                     f"- The town lynched **{player.member.display_name}**({player})"
                 )
@@ -679,8 +689,8 @@ class MafiaGame:
         await self.lock_chat_channel()
 
     async def cleanup_channels(self):
-        for member in self._members:
-            await member.remove_roles(self._alive_game_role)
+        for player in self.players:
+            await player.member.remove_roles(self._alive_game_role)
 
         try:
             category = self.chat.category
