@@ -585,6 +585,9 @@ class MafiaGame:
                             await self.mafia_chat.set_permissions(
                                 player.member, read_messages=True, send_messages=False
                             )
+                        await self.dead_chat.set_permissions(
+                            player.member, read_messages=True
+                        )
 
             if not killed:
                 notifs.append("- No one was killed last night!")
