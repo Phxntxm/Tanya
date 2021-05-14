@@ -69,8 +69,10 @@ class Citizen(Player):
 
 
 class Doctor(Citizen):
-    description = "Your win condition is lynching all mafia, during the night you "
-    "can choose one person to save. They cannot be killed during that night"
+    description = (
+        "Your win condition is lynching all mafia, during the night you "
+        "can choose one person to save. They cannot be killed during that night"
+    )
 
     async def night_task(self, game):
         # Get everyone alive that isn't ourselves
@@ -120,8 +122,8 @@ class Sheriff(Citizen):
 
 class PI(Citizen):
     description = (
-        "Your win condition is lynching all Mafia. Every night you can provide ",
-        "2 people, and see if their alignment is the same",
+        "Your win condition is lynching all Mafia. Every night you can provide "
+        "2 people, and see if their alignment is the same"
     )
 
     async def night_task(self, game):
