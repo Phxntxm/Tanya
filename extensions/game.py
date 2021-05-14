@@ -135,11 +135,22 @@ class MafiaGame:
         else:
             await self._role_list.edit(content=msg)
 
-    def check_winner(self):
+    async def check_winner(self):
         """Loops through all the winners and checks their win conditions"""
         for player in self.players:
             if player.win_condition(self):
-                return player
+                # If they're independent, say they won
+                if player.is_independent:
+                    await self.chat.send(f"Game over, {player} has won!")
+                # If they're Citizens, say the Citizens won
+                if player.is_citizen:
+                    await self.chat.send("Game over, Citizens have won!")
+                # If they're Mafia, say the Mafia won
+                if player.is_independent:
+                    await self.chat.send("Game over, Mafia has won!")
+                return True
+
+        return False
 
     async def pick_players(self):
         # I'm paranoid
@@ -415,18 +426,15 @@ class MafiaGame:
         """Performs one cycle of day/night"""
         # Do day tasks and check for winner
         await self.pre_day()
-        if winner := self.check_winner():
-            await self.chat.send(f"Winner: {winner}!. (Will remove game in 1 minute)")
+        if await self.check_winner():
             return True
         await self.day_tasks()
-        if winner := self.check_winner():
-            await self.chat.send(f"Winner: {winner}!. (Will remove game in 1 minute)")
+        if await self.check_winner():
             return True
         self._day += 1
         # Do night tasks and check for winner
         await self.night_tasks()
-        if winner := self.check_winner():
-            await self.chat.send(f"Winner: {winner}!. (Will remove game in 1 minute)")
+        if await self.check_winner():
             return True
 
     async def _start(self):
