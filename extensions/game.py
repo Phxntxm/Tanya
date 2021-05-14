@@ -544,16 +544,14 @@ class MafiaGame:
                     continue
                 # If they were killed by someone
                 if killer := player.killed_by:
-                    # Handle sheriff killing themselves
-                    if killer == player and isinstance(player, Sheriff):
-                        notifs.append(
-                            f"- {player.member.display_name} ({player}) tried to shoot an innocent and died instead"
-                        )
                     # If saved, they can't be killed
                     if player.saved_for_tonight:
                         player.saved_for_tonight = False
                         player.killer = None
-                        await player.chat.send("You were saved by the doctor!")
+                        if player.chat:
+                            await player.chat.send(
+                                "You were killed last night, but the doctor saved you!"
+                            )
                         if killer.is_mafia:
                             await self.mafia_chat.send(
                                 "{player} was saved by the doctor!"
