@@ -140,7 +140,7 @@ class MafiaMenu(menus.MenuPages):
             await self.ctx.send("Cannot add any more of that role", delete_after=5)
             return
 
-        msg = await self.ctx.send(f"How many? 0 - {amt_allowed}")
+        msg = await self.ctx.send(f"{role}: How many? 0 - {amt_allowed}")
         answer = await self.ctx.bot.wait_for(
             "message", check=self.ctx.bot.min_max_check(self.ctx, 0, amt_allowed)
         )
