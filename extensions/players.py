@@ -1,5 +1,11 @@
+from __future__ import annotations
+
 import discord
 import random
+import typing
+
+if typing.TYPE_CHECKING:
+    from extensions.game import MafiaGame
 
 
 class Player:
@@ -11,24 +17,24 @@ class Player:
     # Dead is for someone who has been dead
     dead: bool = False
     # Use the player that killed them to allow checking properly
-    killed_by = None
+    killed_by: Player = None
     lynched: bool = False
-    saved_for_tonight = False
+    saved_for_tonight: bool = False
     # Needed to check win condition for mafia during day, before they kill
-    can_kill_mafia_at_night = False
+    can_kill_mafia_at_night: bool = False
     # The amount that can be used per game
-    limit = 0
+    limit: int = 0
 
     def __init__(self, discord_member: discord.Member):
         self.member = discord_member
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__class__.__name__
 
-    def win_condition(self, game):
+    def win_condition(self, game: MafiaGame) -> bool:
         return False
 
-    def startup_channel_message(self, game):
+    def startup_channel_message(self, game: MafiaGame) -> str:
         return f"Your role is {self}\n{self.description}."
 
     def set_channel(self, channel: discord.TextChannel):
@@ -37,7 +43,7 @@ class Player:
     def save(self):
         self.saved_for_tonight = True
 
-    def kill(self, by):
+    def kill(self, by: Player):
         self.killed_by = by
 
     async def lock_channel(self):
@@ -54,10 +60,10 @@ class Player:
                 self.channel.guild.default_role, read_messages=False, send_messages=True
             )
 
-    async def day_task(self, game):
+    async def day_task(self, game: MafiaGame):
         pass
 
-    async def night_task(self, game):
+    async def night_task(self, game: MafiaGame):
         pass
 
 
@@ -185,10 +191,6 @@ class Mafia(Player):
             return game.total_mafia > game.total_alive / 2
 
 
-class Godfather(Mafia):
-    pass
-
-
 class Independent(Player):
     is_independent = True
 
@@ -204,24 +206,30 @@ class Jester(Independent):
         )
 
 
-# Sidelined for now, I don't get this role. Seems dumb if their target is mafia
 class Executioner(Independent):
     limit = 1
     target = None
     description = "Your win condition is getting a certain player lynched"
 
-    def startup_channel_message(self, game):
-        self.target = random.choice(game.players)
+    def startup_channel_message(self, game: MafiaGame):
+        self.target = random.choice(len([p for p in game.players if p.is_citizen]))
         self.description += f". Your target is {self.target.member.display_name}"
         return super().startup_channel_message(game)
 
-    def win_condition(self, game):
-        return self.target.lynched
+    def win_condition(self, game: MafiaGame):
+        return (
+            # If target is lynched
+            self.target.lynched
+            # If target is dead by not lynching, and WE'RE lynched
+            or (self.target.dead and not self.target.lynced and self.lynched)
+            # If we were killed by someone who isn't mafia
+            or (self.dead and self.killed_by and not self.killed_by.is_mafia)
+        )
 
 
 __special_mafia__ = ()
 __special_citizens__ = (Doctor, Sheriff, PI)
-__special_independents__ = (Jester,)
+__special_independents__ = (Jester, Executioner)
 
 __special_roles__ = __special_mafia__ + __special_citizens__ + __special_independents__
 

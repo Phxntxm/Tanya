@@ -2,7 +2,9 @@ import asyncio
 import collections
 import dataclasses
 import discord
+from discord import player
 from discord.ext import commands
+from extensions import players
 import random
 import typing
 
@@ -32,7 +34,7 @@ user_overwrites = discord.PermissionOverwrite(read_messages=True)
 @dataclasses.dataclass
 class MafiaGameConfig:
     starting_mafia: int
-    special_roles: typing.List
+    special_roles: typing.List[players.Player]
     ctx: commands.Context
     night_length: int = 45
     day_length: int = 90
@@ -41,11 +43,11 @@ class MafiaGameConfig:
 class MafiaGame:
     def __init__(self, ctx: commands.Context):
         # The discord members, we'll produce our list of players later
-        self._members: list = None
+        self._members: typing.List[discord.Member] = None
         # The actual players of the game
-        self.players: list = []
+        self.players: typing.List[players.Player] = []
 
-        self.ctx = ctx
+        self.ctx: commands.Context = ctx
         self.is_day: bool = True
 
         # Different chats needed
@@ -64,25 +66,25 @@ class MafiaGame:
         self._role_list: list = None
 
     @property
-    def total_mafia(self):
+    def total_mafia(self) -> int:
         return sum(1 for player in self.players if player.is_mafia and not player.dead)
 
     @property
-    def total_citizens(self):
+    def total_citizens(self) -> int:
         return sum(
             1 for player in self.players if player.is_citizen and not player.dead
         )
 
     @property
-    def total_alive(self):
+    def total_alive(self) -> int:
         return sum(1 for player in self.players if not player.dead)
 
     @property
-    def total_players(self):
+    def total_players(self) -> int:
         return len(self.players)
 
     @property
-    def godfather(self):
+    def godfather(self) -> players.Mafia:
         for player in self.players:
             if player.is_godfather:
                 return player
@@ -146,7 +148,7 @@ class MafiaGame:
         else:
             await self._role_list.edit(content=msg)
 
-    async def check_winner(self):
+    async def check_winner(self) -> bool:
         """Loops through all the winners and checks their win conditions"""
         for player in self.players:
             if player.win_condition(self):
@@ -311,7 +313,7 @@ class MafiaGame:
         amount_of_specials = [(k, 0) for k in ctx.bot.__special_roles__]
         menu = ctx.bot.MafiaMenu(source=ctx.bot.MafiaPages(amount_of_specials, ctx))
         # Get max players
-        msg = await ctx.send(
+        await ctx.send(
             "Starting new game of Mafia! Please first select how many players "
             "you want to allow to play the game at maximum?"
         )
@@ -320,7 +322,7 @@ class MafiaGame:
         )
         max_players = int(answer.content)
         # Min players
-        msg = await ctx.send("How many players at minimum?")
+        await ctx.send("How many players at minimum?")
         answer = await ctx.bot.wait_for(
             "message",
             check=ctx.bot.min_max_check(ctx, minimum_players_needed, max_players),
@@ -409,7 +411,7 @@ class MafiaGame:
 
             return len(game_players) >= min
 
-        for i in range(5):
+        for _ in range(5):
             if await wait_for_players():
                 break
 
@@ -456,7 +458,7 @@ class MafiaGame:
         for member in self._members:
             await member.add_roles(self._alive_game_role)
 
-    async def _cycle(self):
+    async def _cycle(self) -> bool:
         """Performs one cycle of day/night"""
         # Do day tasks and check for winner
         await self.pre_day()
@@ -470,6 +472,8 @@ class MafiaGame:
         await self.night_tasks()
         if await self.check_winner():
             return True
+
+        return False
 
     async def _start(self):
         """Play the game"""
@@ -515,7 +519,6 @@ class MafiaGame:
             for player in self.players
             if not player.is_mafia and not player.dead
         )
-        nominations = {}
 
         await self.mafia_chat.send(
             "**Godfather:** Type the member's name to kill someone. Alive players are:\n"
@@ -539,7 +542,7 @@ class MafiaGame:
             task = self.ctx.bot.loop.create_task(p.night_task(self))
             tasks.append(task)
 
-        done, pending = await asyncio.wait(
+        _, pending = await asyncio.wait(
             tasks, timeout=self._config.night_length, return_when=asyncio.ALL_COMPLETED
         )
         # Cancel pending tasks, times up
