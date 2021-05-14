@@ -62,7 +62,7 @@ class Player:
 
 class Citizen(Player):
     is_citizen = True
-    description = "Your win condition is lynching all mafia"
+    description = "Your win condition is lynching all mafia, you do not have a special role during the night"
 
     def win_condition(self, game):
         return game.total_mafia == 0
@@ -81,9 +81,10 @@ class Doctor(Citizen):
             "Please provide the name of one player you would like to save from being killed tonight. Choices are:"
             f"\n{choices}"
         )
-        player = await game.ctx.bot.wait_for(
+        msg = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self)
         )
+        player = discord.utils.get(game.players, member__name=msg.content)
         player.save()
         await self.channel.send("\N{THUMBS UP SIGN}")
 
@@ -102,9 +103,10 @@ class Sheriff(Citizen):
             f"\n{choices}"
         )
 
-        player = await game.ctx.bot.wait_for(
+        msg = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self)
         )
+        player = discord.utils.get(game.players, member__name=msg.content)
 
         # Handle what happens if their choice is right/wrong
         if player.is_citizen or player.is_independent:
@@ -135,12 +137,14 @@ class PI(Citizen):
             f"\n{choices}"
         )
 
-        player1 = await game.ctx.bot.wait_for(
+        msg1 = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self, True)
         )
-        player2 = await game.ctx.bot.wait_for(
+        msg2 = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self, True)
         )
+        player1 = discord.utils.get(game.players, member__name=msg1.content)
+        player2 = discord.utils.get(game.players, member__name=msg2.content)
 
         # If we're here then the message happened twice, meaning we have two people
         if (

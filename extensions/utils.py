@@ -95,10 +95,10 @@ def private_channel_check(game, player, can_choose_self=False):
             return False
         # Set the player for use after
         p = discord.utils.get(game.players, member__name=m.content)
-        # Doctor cannot save themselves
+        # Check the choosing self
         if not can_choose_self and player == p:
             game.ctx.bot.loop.create_task(p.channel.send("You cannot save yourself"))
-        elif player is not None:
+        elif p is not None:
             return True
 
     return check
