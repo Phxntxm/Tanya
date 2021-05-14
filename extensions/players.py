@@ -192,7 +192,9 @@ class Jester(Independent):
     description = "Your win condition is getting lynched or killed by the innocent"
 
     def win_condition(self, game):
-        return self.lynched or (self.killer and not self.killer.is_mafia)
+        return self.lynched or (
+            self.dead and self.killed_by and not self.killed_by.is_mafia
+        )
 
 
 # Sidelined for now, I don't get this role. Seems dumb if their target is mafia
