@@ -210,7 +210,7 @@ class Executioner(Independent):
 
 __special_mafia__ = ()
 __special_citizens__ = (Doctor, Sheriff, PI)
-__special_independents__ = Jester
+__special_independents__ = (Jester,)
 
 __special_roles__ = __special_mafia__ + __special_citizens__ + __special_independents__
 
