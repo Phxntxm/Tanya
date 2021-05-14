@@ -671,17 +671,17 @@ class MafiaGame:
         await self.lock_chat_channel()
 
     async def cleanup_channels(self):
+        for member in self._members:
+            await member.remove_roles(self._alive_game_role)
+
         try:
             category = self.chat.category
             for channel in category.channels:
                 await channel.delete()
-
-            await category.delete()
         except (AttributeError, discord.HTTPException):
-            return
+            pass
 
-        for member in self._members:
-            await member.remove_roles(self._alive_game_role)
+        await category.delete()
 
 
 def setup(bot):
