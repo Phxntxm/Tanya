@@ -671,6 +671,9 @@ class MafiaGame:
         except (AttributeError, discord.HTTPException):
             return
 
+        for member in self._members:
+            await member.remove_roles(self._alive_game_role)
+
 
 def setup(bot):
     bot.MafiaGameConfig = MafiaGameConfig
