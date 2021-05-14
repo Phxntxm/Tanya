@@ -111,7 +111,7 @@ class Sheriff(Citizen):
         player = discord.utils.get(game.players, member__name=msg.content)
 
         # Handle what happens if their choice is right/wrong
-        if player.is_citizen or player.is_independent:
+        if player.is_citizen:
             self.kill()
         elif player.is_mafia:
             player.kill()
@@ -190,7 +190,7 @@ class Jester(Independent):
     description = "Your win condition is getting lynched or killed by the innocent"
 
     def win_condition(self, game):
-        return self.lynched or not self.killer.is_mafia
+        return self.lynched or (self.killer and not self.killer.is_mafia)
 
 
 # Sidelined for now, I don't get this role. Seems dumb if their target is mafia
