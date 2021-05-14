@@ -66,10 +66,15 @@ def nomination_check(game, nominations, channel, mafia=False):
         try:
             content = m.content.split(">>nominate ")[1]
             player = game.ctx.bot.get_mafia_player(game, content)
+            nominator = discord.utils.get(game.players, member=m.author)
         except commands.MemberNotFound:
             return False
         else:
-            if player.is_mafia:
+            # Don't let them nominate themselves
+            if nominator == player:
+                return False
+            # Don't let mafia get nominated during mafia nomination
+            if mafia and player.is_mafia:
                 return False
             # Increment their nomination
             nominations[player] = nominations.get(player, 0) + 1
