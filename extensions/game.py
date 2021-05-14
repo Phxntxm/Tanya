@@ -349,7 +349,7 @@ class MafiaGame:
         )
         # If nothing was done, then the timeout happened
         if not done:
-            return
+            raise asyncio.TimeoutError()
 
         for task in pending:
             task.cancel()

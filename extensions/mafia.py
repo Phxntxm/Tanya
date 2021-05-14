@@ -1,3 +1,4 @@
+import asyncio
 from discord.ext import commands
 
 
@@ -21,7 +22,10 @@ class Mafia(commands.Cog):
         # Store task so it can be cancelled later
         task = ctx.bot.loop.create_task(game.play())
         self.games[ctx.guild.id] = (task, game)
-        await task
+        try:
+            await task
+        except asyncio.TimeoutError:
+            pass
         # Remove game once it's done
         self.previous_games[ctx.guild.id] = game
         del self.games[ctx.guild.id]
