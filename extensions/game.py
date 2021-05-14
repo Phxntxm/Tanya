@@ -276,7 +276,7 @@ class MafiaGame:
         )
         if self._alive_game_role is None:
             self._alive_game_role = await ctx.guild.create_role(
-                self._alive_game_role_name, hoist=True
+                name=self._alive_game_role_name, hoist=True
             )
         amount_of_specials = [(k, 0) for k in ctx.bot.__special_roles__]
         menu = ctx.bot.MafiaMenu(source=ctx.bot.MafiaPages(amount_of_specials, ctx))
