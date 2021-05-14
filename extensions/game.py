@@ -55,7 +55,7 @@ class MafiaGame:
         self.info: discord.TextChannel = None
         self.dead_chat: discord.TextChannel = None
 
-        self._alive_game_role_name: str = "Alive Player"
+        self._alive_game_role_name: str = "Alive Players"
         self._alive_game_role: discord.Role = None
 
         self._rand = random.SystemRandom()
@@ -519,7 +519,6 @@ class MafiaGame:
             # Reactions aren't updated in place, need to refetch
             msg = await msg.channel.fetch_message(msg.id)
             reaction = discord.utils.get(msg.reactions, emoji="\N{THUMBS UP SIGN}")
-            users = [player.member for player in self.players]
             count = 0
             async for user in reaction.users():
                 if (
@@ -528,7 +527,11 @@ class MafiaGame:
                     count += 1
             player = nominations["nomination"]
             if count > self.total_mafia / 2:
-                player.kill()
+                # Just for now a random mafia member as the person who does the killing
+                killer = random.choice(
+                    [m for m in self.players if m.is_mafia and not m.dead]
+                )
+                player.kill(killer)
 
         await self.lock_mafia_channel()
 
