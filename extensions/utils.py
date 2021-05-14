@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from extensions.players import Mafia
 import discord
 from discord.ext import commands
@@ -5,8 +7,6 @@ import re
 import traceback
 from fuzzywuzzy import process
 import typing
-
-from __future__ import annotations
 
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
