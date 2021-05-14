@@ -57,7 +57,7 @@ class MafiaGame:
         self._rand = random.SystemRandom()
         self._config: MafiaGameConfig = None
         self._day: int = 1
-        self._day_notifications: dict = {}
+        self._day_notifications: collections.defaultdict(list)
         self._role_list: list = None
 
     @property
@@ -88,6 +88,12 @@ class MafiaGame:
             url="https://www.jing.fm/clipimg/full/132-1327252_half-moon-png-images-moon-clipart-png.png"
         )
         await self.info.send(embed=embed)
+
+    def add_day_notification(self, *notifications: str):
+        msg, current_notifications = self._day_notifications.get(self._day, (None, []))
+        current_notifications.extend(notifications)
+
+        self._day_notifications[self._day] = (msg, current_notifications)
 
     async def day_notification(self, *notifications: str):
         """Creates a notification embed with all of todays notifications"""
@@ -161,17 +167,17 @@ class MafiaGame:
         # everyone role, allowing only one update for everyone in a single role.
         # We cannot use roles for this task, because everyone can see other people's roles
 
+        # Info channel
+        channels_needed["info"][
+            self.ctx.guild.default_role
+        ] = default_role_disabled_overwrites
+        channels_needed["info"][self.ctx.guild.me] = bot_overwrites
         # Chat channel
         channels_needed["chat"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["chat"][self.ctx.guild.me] = bot_overwrites
         # Mafia channel
         channels_needed["mafia"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["mafia"][self.ctx.guild.me] = bot_overwrites
-        # Info channel
-        channels_needed["info"][
-            self.ctx.guild.default_role
-        ] = default_role_disabled_overwrites
-        channels_needed["info"][self.ctx.guild.me] = bot_overwrites
         # Mafia channel
         channels_needed["dead"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["dead"][self.ctx.guild.me] = bot_overwrites
@@ -256,7 +262,7 @@ class MafiaGame:
     async def _prepare(self):
         """All the setup needed for the game to play"""
         # Variables just for easy setting for testing
-        wait_length_for_players_to_join = 60
+        wait_length_for_players_to_join = 30
         minimum_players_needed = 3
 
         ctx = self.ctx
@@ -401,13 +407,12 @@ class MafiaGame:
         if winner := self.check_winner():
             await self.chat.send(f"Winner: {winner}!. (Will remove game in 1 minute)")
             return True
+        self._day += 1
         # Do night tasks and check for winner
         await self.night_tasks()
         if winner := self.check_winner():
             await self.chat.send(f"Winner: {winner}!. (Will remove game in 1 minute)")
             return True
-
-        self._day += 1
 
     async def _start(self):
         """Play the game"""

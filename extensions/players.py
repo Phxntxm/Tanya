@@ -88,9 +88,9 @@ class Doctor(Citizen):
         await self.channel.send("\N{THUMBS UP SIGN}")
 
 
-class Vigilante(Citizen):
+class Sheriff(Citizen):
     description = "Your win condition is lynching all mafia. During the night you can choose one person to shoot. "
-    "If they are mafia, they will die... however if they are a citizen, you BOTH die"
+    "If they are mafia, they will die... however if they are a citizen, you die instead"
 
     async def night_task(self, game):
         # Get everyone alive that isn't ourselves
@@ -108,10 +108,15 @@ class Vigilante(Citizen):
 
         # Handle what happens if their choice is right/wrong
         if player.is_citizen or player.is_independent:
-            player.kill()
             self.kill()
+            game.add_day_notification(
+                f"{self.member.display_name} ({self}) tried to shoot an innocent and died instead"
+            )
         elif player.is_mafia:
             player.kill()
+            game.add_day_notification(
+                f"{self} Killed {player.member.display_name} ({player})"
+            )
         await self.channel.send("\N{THUMBS UP SIGN}")
 
 
@@ -154,8 +159,10 @@ class PI(Citizen):
 
 class Mafia(Player):
     is_mafia = True
-    description = "Your win condition is to have majority of townsfolk be mafia. "
-    "During the night you and your mafia buddies must agree upon 1 person to kill that night"
+    description = (
+        "Your win condition is to have majority of townsfolk be mafia. "
+        "During the night you and your mafia buddies must agree upon 1 person to kill that night"
+    )
 
     def win_condition(self, game):
         if game.is_day:
@@ -186,6 +193,7 @@ class Jester(Independent):
         return self.lynched
 
 
+# Sidelined for now, I don't get this role. Seems dumb if their target is mafia
 class Executioner(Independent):
     limit = 1
     target = None
@@ -201,8 +209,8 @@ class Executioner(Independent):
 
 
 __special_mafia__ = ()
-__special_citizens__ = (Doctor, Vigilante, PI)
-__special_independents__ = (Jester, Executioner)
+__special_citizens__ = (Doctor, Sheriff, PI)
+__special_independents__ = Jester
 
 __special_roles__ = __special_mafia__ + __special_citizens__ + __special_independents__
 
