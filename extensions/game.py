@@ -509,8 +509,7 @@ class MafiaGame:
             async for user in reaction.users():
                 if (
                     game_player := discord.utils.get(self.players, member=user)
-                    and not game_player.dead
-                ):
+                ) and not game_player.dead:
                     count += 1
             player = nominations["nomination"]
             if count > self.total_mafia / 2:
