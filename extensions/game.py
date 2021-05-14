@@ -551,8 +551,8 @@ class MafiaGame:
                     if player.saved_for_tonight:
                         player.saved_for_tonight = False
                         player.killer = None
-                        if player.chat:
-                            await player.chat.send(
+                        if player.channel:
+                            await player.channel.send(
                                 "You were killed last night, but the doctor saved you!"
                             )
                         if killer.is_mafia:
