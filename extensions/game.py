@@ -384,7 +384,6 @@ class MafiaGame:
         # Now that the setup is done, create the configuration for the game
         self._config = ctx.bot.MafiaGameConfig(
             menu.amount_of_mafia,
-            menu.amount_of_citizens,
             # The special roles
             [role for (role, amt) in amount_of_specials for i in range(amt)],
             ctx,
