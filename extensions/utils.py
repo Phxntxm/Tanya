@@ -1,11 +1,17 @@
+from extensions.players import Mafia
 import discord
 from discord.ext import commands
 import re
 import traceback
 from fuzzywuzzy import process
+import typing
+
+if typing.TYPE_CHECKING:
+    from extensions.game import MafiaGame
+    from extensions.players import Player
 
 
-def get_mafia_player(game, arg):
+def get_mafia_player(game: MafiaGame, arg: str) -> Player:
     if not game:
         raise commands.BadArgument(
             "No game playing for this guild, cannot grab players"
@@ -29,12 +35,12 @@ def get_mafia_player(game, arg):
     return result
 
 
-def to_keycap(i):
+def to_keycap(i: typing.Any[str, int]) -> str:
     return f"{i}\N{variation selector-16}\N{combining enclosing keycap}"
 
 
-def min_max_check(ctx, min, max):
-    def check(m):
+def min_max_check(ctx: commands.Context, min: int, max: int) -> typing.Callable:
+    def check(m: discord.Message) -> bool:
         if m.channel != ctx.channel:
             return False
         if m.author != ctx.author:
@@ -49,13 +55,18 @@ def min_max_check(ctx, min, max):
     return check
 
 
-def nomination_check(game, nominations, channel, mafia=False):
+def nomination_check(
+    game: MafiaGame,
+    nominations: dict,
+    channel: discord.TextChannel,
+    mafia: bool = False,
+) -> typing.Callable:
     if mafia:
         noms_needed = 1 if game.total_mafia else 2
     else:
         noms_needed = 2
 
-    def check(m: discord.Message):
+    def check(m: discord.Message) -> bool:
         # Ignore if not in channel we want
         if m.channel != channel:
             return False
@@ -96,8 +107,10 @@ def nomination_check(game, nominations, channel, mafia=False):
     return check
 
 
-def private_channel_check(game, player, can_choose_self=False):
-    def check(m):
+def private_channel_check(
+    game: MafiaGame, player: Player, can_choose_self: bool = False
+) -> typing.Callable:
+    def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
         if m.channel != player.channel:
             return False
@@ -117,10 +130,10 @@ def private_channel_check(game, player, can_choose_self=False):
     return check
 
 
-def mafia_kill_check(game):
-    def check(m):
+def mafia_kill_check(game: MafiaGame) -> typing.Callable:
+    def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
-        if m.channel != game.mafia_channel:
+        if m.channel != game.mafia_chat:
             return False
         elif m.author != game.godfather.member:
             return False
@@ -138,7 +151,7 @@ def mafia_kill_check(game):
     return check
 
 
-async def log_error(error, bot, ctx=None):
+async def log_error(error: Exception, bot: commands.Bot, ctx: commands.Context = None):
     # Format the error message
     fmt = f"""```
 {''.join(traceback.format_tb(error.__traceback__)).strip()}
