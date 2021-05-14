@@ -84,7 +84,7 @@ class MafiaGame:
 
     async def night_notification(self):
         embed = discord.Embed(
-            title=f"Night {self._day}",
+            title=f"Night {self._day - 1}",
             description="Check your private channels",
             colour=0x0A0A86,
         )
@@ -562,10 +562,10 @@ class MafiaGame:
                     else:
                         # Notify of their killer's role
                         notifs.append(
-                            f"{player.member.display_name} ({player}) was killed by {killer}"
+                            f"- {player.member.display_name} ({player}) was killed by {killer}"
                         )
                         await self.chat.send(
-                            f"{player.member.display_name} ({player}) was killed during the night!"
+                            f"- {player.member.display_name} ({player}) was killed during the night!"
                         )
                         # Make sure to set their attributes right
                         player.killed = False
@@ -587,11 +587,11 @@ class MafiaGame:
                             )
 
             if not killed:
-                notifs.append("No one was killed last night!")
+                notifs.append("- No one was killed last night!")
 
             await self.day_notification(*notifs)
         else:
-            await self.day_notification("Game has started!")
+            await self.day_notification("- Game has started!")
 
         # Unlock the channel
         await self.unlock_chat_channel()
@@ -660,7 +660,7 @@ class MafiaGame:
                         player.member, read_messages=True, send_messages=False
                     )
                 await self.day_notification(
-                    f"The town lynched **{player.member.display_name}**({player})"
+                    f"- The town lynched **{player.member.display_name}**({player})"
                 )
                 await player.member.remove_roles(self._alive_game_role)
                 await self.dead_chat.set_permissions(player.member, read_messages=True)
