@@ -564,6 +564,9 @@ class MafiaGame:
                         notifs.append(
                             f"{player.member.display_name} ({player}) was killed by {killer}"
                         )
+                        await self.chat.send(
+                            f"{player.member.display_name} ({player}) was killed during the night!"
+                        )
                         # Make sure to set their attributes right
                         player.killed = False
                         player.dead = True
