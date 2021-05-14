@@ -87,7 +87,7 @@ class MafiaGame:
         embed.set_thumbnail(
             url="https://www.jing.fm/clipimg/full/132-1327252_half-moon-png-images-moon-clipart-png.png"
         )
-        await self.info.send(embed=embed)
+        await self.info.send(content="@here", embed=embed)
 
     def add_day_notification(self, *notifications: str):
         msg, current_notifications = self._day_notifications.get(self._day, (None, []))
@@ -115,7 +115,7 @@ class MafiaGame:
         embed.add_field(name="Dead", value=self.total_players - self.total_alive)
         embed.add_field(name="Mafia Remaining", value=self.total_mafia)
         if msg is None:
-            msg = await self.info.send(embed=embed)
+            msg = await self.info.send(content="@here", embed=embed)
         else:
             await msg.edit(embed=embed)
 
