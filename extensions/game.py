@@ -503,9 +503,15 @@ class MafiaGame:
         if msg:
             # Reactions aren't updated in place, need to refetch
             msg = await msg.channel.fetch_message(msg.id)
-            count = (
-                discord.utils.get(msg.reactions, emoji="\N{THUMBS UP SIGN}").count - 1
-            )
+            reaction = discord.utils.get(msg.reactions, emoji="\N{THUMBS UP SIGN}")
+            users = [player.member for player in self.players]
+            count = 0
+            async for user in reaction.users():
+                if (
+                    game_player := discord.utils.get(self.players, member=user)
+                    and not game_player.dead
+                ):
+                    count += 1
             player = nominations["nomination"]
             if count > self.total_mafia / 2:
                 player.kill()
