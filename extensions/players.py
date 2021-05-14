@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 
 import discord
 import random
@@ -20,6 +21,7 @@ class Player:
     killed_by: Player = None
     lynched: bool = False
     saved_for_tonight: bool = False
+    night_role_blocked: bool = False
     # Needed to check win condition for mafia during day, before they kill
     can_kill_mafia_at_night: bool = False
     # The amount that can be used per game
@@ -128,6 +130,45 @@ class Sheriff(Citizen):
         await self.channel.send("\N{THUMBS UP SIGN}")
 
 
+class Jailor(Citizen):
+
+    jails: int = 3
+    jailed: Player = None
+
+    async def day_task(self, game: MafiaGame):
+        if self.jails >= 0:
+            return
+
+        # Get everyone alive that isn't ourselves
+        choices = "\n".join(
+            [p.member.name for p in game.players if p != self and not p.dead]
+        )
+        await self.channel.send(
+            "If you would like to jail someone tonight, provide just their name. Choices are:"
+            f"\n{choices}"
+        )
+
+        msg = await game.ctx.bot.wait_for(
+            "message", check=game.ctx.bot.private_channel_check(game, self)
+        )
+        player = game.ctx.bot.get_mafia_player(msg.content)
+        player.night_role_blocked = True
+        self.jailed = player
+
+        self.jails -= 1
+        await self.channel.send("\N{THUMBS UP SIGN}")
+
+    async def night_task(self, game: MafiaGame):
+        if self.jailed:
+            self.jailed = None
+            await game.jail.set_permissions(self.jailed.member, read_messages=True)
+            game.ctx.bot.loop.create_task(self.unjail(game))
+
+    async def unjail(self, game: MafiaGame):
+        await asyncio.sleep(game._config.night_length)
+        await game.jail.set_permissions(self.jailed.member, read_messages=False)
+
+
 class PI(Citizen):
     description = (
         "Your win condition is lynching all Mafia. Every night you can provide "
@@ -228,7 +269,7 @@ class Executioner(Independent):
 
 
 __special_mafia__ = ()
-__special_citizens__ = (Doctor, Sheriff, PI)
+__special_citizens__ = (Doctor, Sheriff, PI, Jailor)
 __special_independents__ = (Jester, Executioner)
 
 __special_roles__ = __special_mafia__ + __special_citizens__ + __special_independents__

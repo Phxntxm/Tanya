@@ -52,8 +52,9 @@ class MafiaGame:
 
         # Different chats needed
         self.chat: discord.TextChannel = None
-        self.mafia_chat: discord.TextChannel = None
         self.info: discord.TextChannel = None
+        self.jail: discord.TextChannel = None
+        self.mafia_chat: discord.TextChannel = None
         self.dead_chat: discord.TextChannel = None
 
         self._alive_game_role_name: str = "Alive Players"
@@ -215,9 +216,12 @@ class MafiaGame:
         # Mafia channel
         channels_needed["mafia"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["mafia"][self.ctx.guild.me] = bot_overwrites
-        # Mafia channel
+        # Dead channel
         channels_needed["dead"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["dead"][self.ctx.guild.me] = bot_overwrites
+        # Jail
+        channels_needed["jail"][self.ctx.guild.default_role] = default_role_overwrites
+        channels_needed["jail"][self.ctx.guild.me] = bot_overwrites
         for player in self.players:
             if player.is_mafia:
                 channels_needed["mafia"][player.member] = user_overwrites
@@ -225,6 +229,8 @@ class MafiaGame:
         for player in self.players:
             channels_needed["chat"][player.member] = user_overwrites
             channels_needed["info"][player.member] = user_overwrites
+            if isinstance(player, players.Jailor):
+                channels_needed["jail"][player.member] = user_overwrites
             channels_needed[player][
                 self.ctx.guild.default_role
             ] = default_role_overwrites
@@ -232,28 +238,12 @@ class MafiaGame:
             channels_needed[player][self.ctx.guild.me] = bot_overwrites
         # Now simply set all channels and overwrites
         for player, overwrite in channels_needed.items():
-            # Save mafia channel for night tasks
-            if player == "mafia":
+            # Set the special channels
+            if player in ["mafia_chat", "chat", "info", "dead_chat", "jail"]:
                 current_channel = await category.create_text_channel(
                     player, overwrites=overwrite
                 )
-                self.mafia_chat = current_channel
-            # Save the chat channel for day tasks
-            elif player == "chat":
-                current_channel = await category.create_text_channel(
-                    player, overwrites=overwrite
-                )
-                self.chat = current_channel
-            elif player == "info":
-                current_channel = await category.create_text_channel(
-                    player, overwrites=overwrite
-                )
-                self.info = current_channel
-            elif player == "dead":
-                current_channel = await category.create_text_channel(
-                    player, overwrites=overwrite
-                )
-                self.dead_chat = current_channel
+                setattr(self, player, current_channel)
             # All personal channels
             else:
                 channel = player.member.display_name.lower()
@@ -536,8 +526,8 @@ class MafiaGame:
         tasks.append(mafia_check())
 
         for p in self.players:
-            # Dead players can't do shit
-            if p.dead:
+            if p.dead or p.night_role_blocked:
+                p.night_role_blocked = False
                 continue
             task = self.ctx.bot.loop.create_task(p.night_task(self))
             tasks.append(task)
@@ -648,6 +638,13 @@ class MafiaGame:
                 "will be hung"
             )
             await msg.add_reaction("\N{THUMBS UP SIGN}")
+
+        for p in self.players:
+            # Dead players can't do shit
+            if p.dead:
+                continue
+            task = self.ctx.bot.loop.create_task(p.day_task(self))
+            tasks.append(task)
 
         if self._day > 1:
             tasks.append(self.ctx.bot.loop.create_task(nominate_player()))
