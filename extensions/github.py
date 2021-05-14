@@ -19,9 +19,10 @@ class Github(commands.Cog):
     async def receive_push(self, request):
         response = await request.json()
         # First pull from github
-        await asyncio.create_subprocess_shell(
+        proc = await asyncio.create_subprocess_shell(
             "git pull", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
+        await proc.communicate()
         # Now load/reload/unload based on added/removed/modified
         loaded = []
         reloaded = []
