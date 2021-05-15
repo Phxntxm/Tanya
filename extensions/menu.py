@@ -125,7 +125,8 @@ class MafiaMenu(menus.MenuPages):
     async def handle_click(self, payload):
         # Get the number that was clicked
         num = int(str(payload.emoji)[0])
-        role, current_num = self.source.entries[num]
+        index = num + self.source.per_page * self.current_page
+        role, current_num = self.source.entries[index]
         # Only allow up to how many members can remain
         if role.is_mafia:
             amt_allowed = self.allowed_mafia + current_num
