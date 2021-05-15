@@ -214,11 +214,11 @@ class MafiaGame:
         channels_needed["chat"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["chat"][self.ctx.guild.me] = bot_overwrites
         # Mafia channel
-        channels_needed["mafia"][self.ctx.guild.default_role] = default_role_overwrites
-        channels_needed["mafia"][self.ctx.guild.me] = bot_overwrites
+        channels_needed["mafia_chat"][self.ctx.guild.default_role] = default_role_overwrites
+        channels_needed["mafia_chat"][self.ctx.guild.me] = bot_overwrites
         # Dead channel
-        channels_needed["dead"][self.ctx.guild.default_role] = default_role_overwrites
-        channels_needed["dead"][self.ctx.guild.me] = bot_overwrites
+        channels_needed["dead_chat"][self.ctx.guild.default_role] = default_role_overwrites
+        channels_needed["dead_chat"][self.ctx.guild.me] = bot_overwrites
         # Jail
         channels_needed["jail"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["jail"][self.ctx.guild.me] = bot_overwrites
