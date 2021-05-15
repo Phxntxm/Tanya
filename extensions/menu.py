@@ -146,7 +146,7 @@ class MafiaMenu(menus.MenuPages):
             "message", check=self.ctx.bot.min_max_check(self.ctx, 0, amt_allowed)
         )
         # Delete and set answer
-        self.source.entries[num] = (role, int(answer.content))
+        self.source.entries[index] = (role, int(answer.content))
         await self.ctx.channel.delete_messages([msg, answer])
         # Refresh
         await self.show_page(self.current_page)
