@@ -228,7 +228,7 @@ class MafiaGame:
         channels_needed["jail"][self.ctx.guild.me] = bot_overwrites
         for player in self.players:
             if player.is_mafia:
-                channels_needed["mafia"][player.member] = user_overwrites
+                channels_needed["mafia_chat"][player.member] = user_overwrites
         # For each player, add their overwrite to the channel
         for player in self.players:
             channels_needed["chat"][player.member] = user_overwrites
@@ -292,7 +292,7 @@ class MafiaGame:
     async def _prepare(self):
         """All the setup needed for the game to play"""
         # Variables just for easy setting for testing
-        wait_length_for_players_to_join = 30
+        wait_length_for_players_to_join = 10
         minimum_players_needed = 3
 
         ctx = self.ctx
