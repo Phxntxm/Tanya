@@ -160,10 +160,9 @@ class Citizen(Player):
 
 class Doctor(Citizen):
     defense_type = DefenseType.powerful
-
     description = (
-        "Your win condition is lynching all mafia, during the night you "
-        "can choose one person to save. They cannot be killed during that night"
+        "During the night you can choose one person to save. "
+        "They cannot be killed by a basic attack during that night"
     )
 
     async def night_task(self, game):
@@ -176,9 +175,8 @@ class Doctor(Citizen):
 
 class Sheriff(Citizen):
     attack_type = AttackType.basic
-
     description = (
-        "Your win condition is lynching all mafia. During the night you can choose one person to shoot. "
+        "During the night you can choose one person to shoot. "
         "If they are mafia, they will die... however if they are a citizen, you die instead"
     )
     can_kill_mafia_at_night = True
@@ -201,6 +199,11 @@ class Jailor(Citizen):
 
     jails: int = 3
     jailed: Player = None
+    description = (
+        "Each night you can choose to jail one person, during that night they "
+        "will be able to see the jail chat, allowing you to converse with them. They "
+        "will also not be able to perform their normal role that night"
+    )
 
     async def day_task(self, game: MafiaGame):
         if self.jails >= 0:
@@ -226,7 +229,7 @@ class Jailor(Citizen):
 
 class PI(Citizen):
     description = (
-        "Your win condition is lynching all Mafia. Every night you can provide "
+        "Every night you can provide "
         "2 people, and see if their alignment is the same"
     )
 
@@ -257,6 +260,10 @@ class PI(Citizen):
 class Lookout(Citizen):
 
     watching: Player = None
+    description = (
+        "Your job is to watch carefully, every night you can watch one person "
+        "and will see who has visited them"
+    )
 
     async def night_task(self, game: MafiaGame):
         msg = "Provide the player you want to watch tonight, at the end of the night I will let you know who visited them"
@@ -308,11 +315,35 @@ class Independent(Player):
 class Survivor(Independent):
     vests = 4
     defense_type = DefenseType.basic
+    description = (
+        "You must survive, each night you have the choice to use a bulletproof "
+        "vest which will save you from a basic attack. You only have 4 vests"
+    )
+
+    async def night_task(self, game: MafiaGame):
+        if self.vests <= 0:
+            return
+
+        msg = await self.channel.send(
+            "Click the reaction if you want to protect yourself tonight "
+            f"(You have {self.vests} vests remaining"
+        )
+        await msg.add_reaction("\N{THUMBS UP SIGN}")
+
+        def check(p):
+            return (
+                p.message_id == msg.id
+                and p.user_id == self.member.id
+                and str(p.emoji) == "\N{THUMBS UP SIGN}"
+            )
+
+        await game.ctx.bot.wait_for("reaction_add", check=check)
+        self.vests -= 1
+        self.protected_by = self
 
 
 class Jester(Independent):
     limit = 1
-
     description = "Your win condition is getting lynched or killed by the innocent"
 
     def win_condition(self, game):
@@ -343,7 +374,11 @@ class Executioner(Independent):
 
 
 class Arsonist(Independent):
-    attack_type = AttackType.powerful
+    attack_type = AttackType.unstoppable
+    description = (
+        "Your job is simple, douse everyone in fuel and ignite them. You "
+        "win if everyone has been ignited and you are the last person left"
+    )
 
     async def night_task(self, game: MafiaGame):
         doused = [p for p in game.players if p.doused and not p.dead]
@@ -362,6 +397,9 @@ class Arsonist(Independent):
         else:
             player.doused = True
             player.visit()
+
+    def win_condition(self, game: MafiaGame) -> bool:
+        return game.total_alive == 1 and not self.dead
 
 
 __special_mafia__ = ()
