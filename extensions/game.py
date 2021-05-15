@@ -463,6 +463,10 @@ class MafiaGame:
         if await self.check_winner():
             return True
 
+        # Schedule all the post night tasks
+        for player in self.players:
+            self.ctx.bot.loop.create_task(player.post_night_task())
+
         return False
 
     async def _start(self):
@@ -542,7 +546,6 @@ class MafiaGame:
         await self.lock_mafia_channel()
 
     async def pre_day(self):
-        # Check if anyone was killed
         notifs = []
         if self._day > 1:
             killed = []
@@ -553,17 +556,18 @@ class MafiaGame:
                     continue
                 # If they were killed by someone
                 if killer := player.killed_by:
-                    # If saved, they can't be killed
-                    if player.saved_for_tonight:
-                        player.saved_for_tonight = False
-                        player.killer = None
+                    # If protected, check the power of protection against attacking
+                    if (
+                        player.protected_by
+                        and killer.attack_type > player.protected_by.defense_type
+                    ):
                         if player.channel:
                             await player.channel.send(
-                                "You were killed last night, but the doctor saved you!"
+                                f"You were killed last night, but {player.protected_by} saved you!"
                             )
                         if killer.is_mafia:
                             await self.mafia_chat.send(
-                                "{player} was saved by the doctor!"
+                                "{player} was saved last night from your attack!"
                             )
                     else:
                         # Notify of their killer's role
@@ -573,8 +577,6 @@ class MafiaGame:
                         await self.chat.send(
                             f"- {player.member.display_name} ({player}) was killed during the night!"
                         )
-                        # Make sure to set their attributes right
-                        player.killed = False
                         player.dead = True
                         await player.member.remove_roles(self._alive_game_role)
                         # Just to check if someone was killed
@@ -606,6 +608,10 @@ class MafiaGame:
         else:
             await self.day_notification("- Game has started!")
 
+        # Cleanup everyone's attrs
+        for p in self.players:
+            if not p.dead:
+                p.cleanup_attrs()
         # Unlock the channel
         await self.unlock_chat_channel()
 

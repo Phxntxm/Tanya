@@ -2,11 +2,48 @@ from __future__ import annotations
 import asyncio
 
 import discord
+from enum import Enum
 import random
 import typing
 
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
+
+
+class AttackType(Enum):
+    basic = 1
+    powerful = 2
+    unstoppable = 3
+
+    def __gt__(self, other: DefenseType):
+        return self.value > other.value
+
+    def __lt__(self, other: DefenseType):
+        return self.value < other.value
+
+    def __gte__(self, other: DefenseType):
+        return self.value >= other.value
+
+    def __lte__(self, other: DefenseType):
+        return self.value <= other.value
+
+
+class DefenseType(Enum):
+    basic = 1
+    powerful = 2
+    unstoppable = 3
+
+    def __gt__(self, other: AttackType):
+        return self.value > other.value
+
+    def __lt__(self, other: AttackType):
+        return self.value < other.value
+
+    def __gte__(self, other: AttackType):
+        return self.value >= other.value
+
+    def __lte__(self, other: AttackType):
+        return self.value <= other.value
 
 
 class Player:
@@ -15,17 +52,21 @@ class Player:
     is_independent: bool = False
     is_godfather: bool = False
     channel: discord.TextChannel = None
-    # Dead is for someone who has been dead
     dead: bool = False
-    # Use the player that killed them to allow checking properly
+    # Players that affect this player
     killed_by: Player = None
+    visited_by: typing.List[Player] = None
+    protected_by: Player = None
+    # Different bools for specific roles needed for each player
+    doused: bool = False
     lynched: bool = False
-    saved_for_tonight: bool = False
     night_role_blocked: bool = False
     # Needed to check win condition for mafia during day, before they kill
     can_kill_mafia_at_night: bool = False
     # The amount that can be used per game
     limit: int = 0
+    attack_type: AttackType = None
+    defense_type: DefenseType = None
 
     def __init__(self, discord_member: discord.Member):
         self.member = discord_member
@@ -36,17 +77,54 @@ class Player:
     def win_condition(self, game: MafiaGame) -> bool:
         return False
 
+    def cleanup_attrs(self):
+        self.killed_by = None
+        self.visited_by = []
+        self.protected_by = None
+        self.night_role_blocked = False
+
     def startup_channel_message(self, game: MafiaGame) -> str:
         return f"Your role is {self}\n{self.description}."
 
     def set_channel(self, channel: discord.TextChannel):
         self.channel = channel
 
-    def save(self):
-        self.saved_for_tonight = True
+    def protect(self, by: Player):
+        self.protected_by = by
+        self.visited_by.append(by)
 
     def kill(self, by: Player):
         self.killed_by = by
+        self.visited_by.append(by)
+
+    def visit(self, by: Player):
+        self.visited_by.append(by)
+
+    async def wait_for_player(
+        self,
+        game: MafiaGame,
+        message: str,
+        only_others: bool = True,
+        only_alive: bool = True,
+        choices: typing.List[Player] = None,
+    ) -> Player:
+        # Get available choices based on what options given
+        if choices is None:
+            choices = []
+            for p in game.players:
+                if p.dead and only_alive:
+                    continue
+                if p == self and only_others:
+                    continue
+                choices.append(p.member.name)
+        # Turn into string
+        "\n".join(choices)
+        await self.channel.send(message + f". Choices are:\n{choices}")
+
+        msg = await game.ctx.bot.wait_for(
+            "message", check=game.ctx.bot.private_channel_check(game, self)
+        )
+        return game.ctx.bot.get_mafia_player(msg.content)
 
     async def lock_channel(self):
         if self.channel:
@@ -68,6 +146,9 @@ class Player:
     async def night_task(self, game: MafiaGame):
         pass
 
+    async def post_night_task(self, game: MafiaGame):
+        pass
+
 
 class Citizen(Player):
     is_citizen = True
@@ -78,6 +159,8 @@ class Citizen(Player):
 
 
 class Doctor(Citizen):
+    defense_type = DefenseType.powerful
+
     description = (
         "Your win condition is lynching all mafia, during the night you "
         "can choose one person to save. They cannot be killed during that night"
@@ -85,22 +168,15 @@ class Doctor(Citizen):
 
     async def night_task(self, game):
         # Get everyone alive that isn't ourselves
-        choices = "\n".join(
-            [p.member.name for p in game.players if p != self and not p.dead]
-        )
-        await self.channel.send(
-            "Please provide the name of one player you would like to save from being killed tonight. Choices are:"
-            f"\n{choices}"
-        )
-        msg = await game.ctx.bot.wait_for(
-            "message", check=game.ctx.bot.private_channel_check(game, self)
-        )
-        player = game.ctx.bot.get_mafia_player(msg.content)
+        msg = "Please provide the name of one player you would like to save from being killed tonight"
+        player = await self.wait_for_player(game, msg)
         player.save()
         await self.channel.send("\N{THUMBS UP SIGN}")
 
 
 class Sheriff(Citizen):
+    attack_type = AttackType.basic
+
     description = (
         "Your win condition is lynching all mafia. During the night you can choose one person to shoot. "
         "If they are mafia, they will die... however if they are a citizen, you die instead"
@@ -109,22 +185,13 @@ class Sheriff(Citizen):
 
     async def night_task(self, game):
         # Get everyone alive that isn't ourselves
-        choices = "\n".join(
-            [p.member.name for p in game.players if p != self and not p.dead]
-        )
-        await self.channel.send(
-            "If you would like to shoot someone tonight, provide just their name. Choices are:"
-            f"\n{choices}"
-        )
-
-        msg = await game.ctx.bot.wait_for(
-            "message", check=game.ctx.bot.private_channel_check(game, self)
-        )
-        player = game.ctx.bot.get_mafia_player(msg.content)
+        msg = "If you would like to shoot someone tonight, provide just their name"
+        player = await self.wait_for_player(game, msg)
 
         # Handle what happens if their choice is right/wrong
         if player.is_citizen:
             self.kill(self)
+            player.visit(self)
         else:
             player.kill(self)
         await self.channel.send("\N{THUMBS UP SIGN}")
@@ -138,20 +205,8 @@ class Jailor(Citizen):
     async def day_task(self, game: MafiaGame):
         if self.jails >= 0:
             return
-
-        # Get everyone alive that isn't ourselves
-        choices = "\n".join(
-            [p.member.name for p in game.players if p != self and not p.dead]
-        )
-        await self.channel.send(
-            "If you would like to jail someone tonight, provide just their name. Choices are:"
-            f"\n{choices}"
-        )
-
-        msg = await game.ctx.bot.wait_for(
-            "message", check=game.ctx.bot.private_channel_check(game, self)
-        )
-        player = game.ctx.bot.get_mafia_player(msg.content)
+        msg = "If you would like to jail someone tonight, provide just their name"
+        player = await self.wait_for_player(game, msg)
         player.night_role_blocked = True
         self.jailed = player
 
@@ -177,24 +232,14 @@ class PI(Citizen):
 
     async def night_task(self, game):
         # Get everyone alive
-        choices = "\n".join([p.member.name for p in game.players if not p.dead])
-        # F strings dumb, so get the output for f string here
-        await self.channel.send(
-            "Provide two people, in separate messages, to check if their alignment is the same. Choices are:"
-            f"\n{choices}"
-        )
+        choices = [p.member.name for p in game.players if not p.dead]
+        msg = "Provide the first person to check their alignments"
+        player1 = await self.wait_for_player(game, msg, custom_choices=choices)
+        choices.remove(player1.member.name)
+        msg = "Provide the second person to check their alignments"
+        player2 = await self.wait_for_player(game, msg, custom_choices=choices)
 
-        msg1 = await game.ctx.bot.wait_for(
-            "message", check=game.ctx.bot.private_channel_check(game, self, True)
-        )
-        await msg1.add_reaction("\N{THUMBS UP SIGN}")
-        msg2 = await game.ctx.bot.wait_for(
-            "message", check=game.ctx.bot.private_channel_check(game, self, True)
-        )
-        player1 = game.ctx.bot.get_mafia_player(msg1.content)
-        player2 = game.ctx.bot.get_mafia_player(msg2.content)
-
-        # If we're here then the message happened twice, meaning we have two people
+        # Now compare the two people
         if (
             (player1.is_citizen and player2.is_citizen)
             or (player1.is_mafia and player2.is_mafia)
@@ -209,8 +254,32 @@ class PI(Citizen):
             )
 
 
+class Lookout(Citizen):
+
+    watching: Player = None
+
+    async def night_task(self, game: MafiaGame):
+        msg = "Provide the player you want to watch tonight, at the end of the night I will let you know who visited them"
+        self.watching = await self.wait_for_player(game, msg)
+
+    async def post_night_task(self, game: MafiaGame):
+        visitors = self.watching.visited_by
+
+        if visitors:
+            fmt = "\n".join(p.member.name for p in visitors)
+            msg = f"{self.watching.member.name} was visited by:\n{fmt}"
+            await self.channel.send(msg)
+        else:
+            await self.channel.send(
+                f"{self.watching.member.name} was not visited by anyone"
+            )
+
+        self.watching = None
+
+
 class Mafia(Player):
     is_mafia = True
+    attack_type = AttackType.basic
     description = (
         "Your win condition is to have majority of townsfolk be mafia. "
         "During the night you and your mafia buddies must agree upon 1 person to kill that night"
@@ -234,6 +303,11 @@ class Mafia(Player):
 
 class Independent(Player):
     is_independent = True
+
+
+class Survivor(Independent):
+    vests = 4
+    defense_type = DefenseType.basic
 
 
 class Jester(Independent):
@@ -268,9 +342,31 @@ class Executioner(Independent):
         )
 
 
+class Arsonist(Independent):
+    attack_type = AttackType.powerful
+
+    async def night_task(self, game: MafiaGame):
+        doused = [p for p in game.players if p.doused and not p.dead]
+        undoused = [p for p in game.players if not p.doused and not p.dead]
+        msg = f"Choose a target to douse, if you choose yourself you will ignite all doused targets. Doused targets:\n\n{doused}\n\n"
+
+        player = await self.wait_for_player(
+            game, msg, only_others=False, choices=undoused
+        )
+
+        # Ignite
+        if player == self:
+
+            for player in doused:
+                player.kill(self)
+        else:
+            player.doused = True
+            player.visit()
+
+
 __special_mafia__ = ()
-__special_citizens__ = (Doctor, Sheriff, PI, Jailor)
-__special_independents__ = (Jester, Executioner)
+__special_citizens__ = (Doctor, Sheriff, PI, Jailor, Lookout)
+__special_independents__ = (Jester, Executioner, Arsonist)
 
 __special_roles__ = __special_mafia__ + __special_citizens__ + __special_independents__
 
