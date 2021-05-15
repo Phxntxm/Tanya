@@ -358,7 +358,7 @@ class Executioner(Independent):
     description = "Your win condition is getting a certain player lynched"
 
     def startup_channel_message(self, game: MafiaGame):
-        self.target = random.choice(len([p for p in game.players if p.is_citizen]))
+        self.target = random.choice([p for p in game.players if p.is_citizen])
         self.description += f". Your target is {self.target.member.display_name}"
         return super().startup_channel_message(game)
 
