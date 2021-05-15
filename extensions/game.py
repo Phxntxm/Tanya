@@ -399,13 +399,13 @@ class MafiaGame:
             for task in pending:
                 task.cancel()
 
-            return len(game_players) >= min
+            return len(game_players) >= min_players
 
         for _ in range(5):
             if await wait_for_players():
                 break
 
-        if len(game_players) < min:
+        if len(game_players) < min_players:
             await ctx.send("Failed to get players too many times")
             raise Exception()
 
@@ -698,14 +698,15 @@ class MafiaGame:
         for player in self.players:
             await player.member.remove_roles(self._alive_game_role)
 
+        category = self.chat.category
+
         try:
-            category = self.chat.category
             for channel in category.channels:
                 await channel.delete()
+            await category.delete()
         except (AttributeError, discord.HTTPException):
             pass
 
-        await category.delete()
 
 
 def setup(bot):
