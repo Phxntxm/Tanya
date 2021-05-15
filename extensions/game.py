@@ -214,10 +214,14 @@ class MafiaGame:
         channels_needed["chat"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["chat"][self.ctx.guild.me] = bot_overwrites
         # Mafia channel
-        channels_needed["mafia_chat"][self.ctx.guild.default_role] = default_role_overwrites
+        channels_needed["mafia_chat"][
+            self.ctx.guild.default_role
+        ] = default_role_overwrites
         channels_needed["mafia_chat"][self.ctx.guild.me] = bot_overwrites
         # Dead channel
-        channels_needed["dead_chat"][self.ctx.guild.default_role] = default_role_overwrites
+        channels_needed["dead_chat"][
+            self.ctx.guild.default_role
+        ] = default_role_overwrites
         channels_needed["dead_chat"][self.ctx.guild.me] = bot_overwrites
         # Jail
         channels_needed["jail"][self.ctx.guild.default_role] = default_role_overwrites
@@ -698,15 +702,13 @@ class MafiaGame:
         for player in self.players:
             await player.member.remove_roles(self._alive_game_role)
 
-        category = self.chat.category
-
         try:
+            category = self.chat.category
             for channel in category.channels:
                 await channel.delete()
             await category.delete()
         except (AttributeError, discord.HTTPException):
             pass
-
 
 
 def setup(bot):
