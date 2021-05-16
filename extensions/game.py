@@ -380,7 +380,7 @@ class MafiaGame:
                 # Only allow people to leave if we haven't hit the min
                 if p.event_type == "REACTION_REMOVE":
                     game_players.remove(p.user_id)
-                ctx.bot.loop.create_task(
+                ctx.create_task(
                     update_embed(
                         start_timeout=len(game_players) == min_players
                         and timer_not_started
@@ -389,13 +389,13 @@ class MafiaGame:
 
             done, pending = await asyncio.wait(
                 [
-                    self.ctx.bot.loop.create_task(
+                    self.ctx.create_task(
                         ctx.bot.wait_for("raw_reaction_add", check=check)
                     ),
-                    self.ctx.bot.loop.create_task(
+                    self.ctx.create_task(
                         ctx.bot.wait_for("raw_reaction_remove", check=check)
                     ),
-                    self.ctx.bot.loop.create_task(join_event.wait()),
+                    self.ctx.create_task(join_event.wait()),
                 ],
                 return_when=asyncio.FIRST_COMPLETED,
                 timeout=300,
@@ -473,7 +473,7 @@ class MafiaGame:
 
         # Schedule all the post night tasks
         for player in self.players:
-            self.ctx.bot.loop.create_task(player.post_night_task(self))
+            self.ctx.create_task(player.post_night_task(self))
 
         return False
 
@@ -513,9 +513,7 @@ class MafiaGame:
         await self.unlock_mafia_channel()
         # Schedule tasks. Add the asyncio sleep to *ensure* we sleep that long
         # even if everyone finishes early
-        tasks = [
-            self.ctx.bot.loop.create_task(asyncio.sleep(self._config.night_length))
-        ]
+        tasks = [self.ctx.create_task(asyncio.sleep(self._config.night_length))]
         msg = "\n".join(
             player.member.name
             for player in self.players
@@ -546,7 +544,7 @@ class MafiaGame:
             if p.dead or p.night_role_blocked:
                 p.night_role_blocked = False
                 continue
-            task = self.ctx.bot.loop.create_task(p.night_task(self))
+            task = self.ctx.create_task(p.night_task(self))
             tasks.append(task)
 
         _, pending = await asyncio.wait(
@@ -639,7 +637,7 @@ class MafiaGame:
             await self.chat.send("Day is about to end in 20 seconds")
             await asyncio.sleep(20)
 
-        tasks = [self.ctx.bot.loop.create_task(day_sleep())]
+        tasks = [self.ctx.create_task(day_sleep())]
 
         nominations = {}
         msg = None
@@ -662,11 +660,11 @@ class MafiaGame:
             # Dead players can't do shit
             if p.dead:
                 continue
-            task = self.ctx.bot.loop.create_task(p.day_task(self))
+            task = self.ctx.create_task(p.day_task(self))
             tasks.append(task)
 
         if self._day > 1:
-            tasks.append(self.ctx.bot.loop.create_task(nominate_player()))
+            tasks.append(self.ctx.create_task(nominate_player()))
         _, pending = await asyncio.wait(
             tasks, timeout=day_length, return_when=asyncio.ALL_COMPLETED
         )

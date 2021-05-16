@@ -118,7 +118,7 @@ def nomination_check(
                 return True
             # Otherwise mention need one more
             else:
-                game.ctx.bot.loop.create_task(
+                game.ctx.create_task(
                     m.channel.send(
                         f"{player.member.display_name} nominated, need one more"
                     )
@@ -143,7 +143,7 @@ def private_channel_check(
             return False
         # Check the choosing self
         if not can_choose_self and player == p:
-            game.ctx.bot.loop.create_task(p.channel.send("You cannot chooose yourself"))
+            game.ctx.create_task(p.channel.send("You cannot chooose yourself"))
         elif p is not None:
             return True
 

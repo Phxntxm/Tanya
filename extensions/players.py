@@ -220,7 +220,7 @@ class Jailor(Citizen):
     async def night_task(self, game: MafiaGame):
         if self.jailed:
             await game.jail.set_permissions(self.jailed.member, read_messages=True)
-            game.ctx.bot.loop.create_task(self.unjail(game))
+            game.ctx.create_task(self.unjail(game))
 
     async def unjail(self, game: MafiaGame):
         member = self.jailed.member
