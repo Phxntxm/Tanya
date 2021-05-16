@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 
 
 class CustomContext(commands.Context):
-    async def create_task(self, *args, **kwargs):
+    def create_task(self, *args, **kwargs):
         """A shortcut to creating a task with a callback of logging the error"""
         task = self.bot.loop.create_task(*args, **kwargs)
         task.add_done_callback(self._log_future_error)
