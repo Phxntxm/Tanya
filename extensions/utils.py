@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 
 from extensions.players import Mafia
 import discord
@@ -11,6 +12,19 @@ import typing
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
     from extensions.players import Player
+
+
+class CustomContext(commands.Context):
+    async def create_task(self, *args, **kwargs):
+        """A shortcut to creating a task with a callback of logging the error"""
+        task = self.bot.loop.create_task(*args, **kwargs)
+        task.add_done_callback(self._log_future_error)
+
+        return task
+
+    def _log_future_error(self, future: asyncio.Future):
+        if exc := future.exception():
+            self.bot.loop.create_task(self.bot.log_error(exc, self.bot, self))
 
 
 def get_mafia_player(game: MafiaGame, arg: str) -> Player:
@@ -194,6 +208,7 @@ def setup(bot):
     bot.nomination_check = nomination_check
     bot.private_channel_check = private_channel_check
     bot.mafia_kill_check = mafia_kill_check
+    bot.custom_context = CustomContext
 
 
 def teardown(bot):
@@ -204,3 +219,4 @@ def teardown(bot):
     del bot.nomination_check
     del bot.private_channel_check
     del bot.mafia_kill_check
+    del bot.custom_context

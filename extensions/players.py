@@ -361,7 +361,11 @@ class Jester(Independent):
 class Executioner(Independent):
     limit = 1
     target = None
-    description = "Your win condition is getting a certain player lynched"
+    description = (
+        "Your win condition is getting a certain player lynched. If they "
+        "die without getting lynched, you become a Jester. Your goal is to then get "
+        "lynched yourself"
+    )
 
     def startup_channel_message(self, game: MafiaGame):
         self.target = random.choice([p for p in game.players if p.is_citizen])

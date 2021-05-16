@@ -9,12 +9,23 @@ intents = discord.Intents(
     guild_reactions=True,
     guilds=True,
 )
-bot = commands.Bot(
+
+
+class Bot(commands.Bot):
+    error_channel = 840770815498649660
+
+    async def get_context(self, message, *, cls=commands.Context):
+        if hasattr(self, "custom_context"):
+            return await super().get_context(message, cls=self.custom_context)
+        else:
+            return await super().get_context(message, cls=cls)
+
+
+bot = Bot(
     command_prefix=commands.when_mentioned_or(">>"),
     intents=intents,
     owner_ids=[115997555619266561, 204306127838642176],
 )
-bot.error_channel = 840770815498649660
 
 
 for ext in glob("extensions/*.py"):
