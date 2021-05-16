@@ -124,7 +124,7 @@ class Player:
         msg = await game.ctx.bot.wait_for(
             "message", check=game.ctx.bot.private_channel_check(game, self)
         )
-        return game.ctx.bot.get_mafia_player(msg.content)
+        return game.ctx.bot.get_mafia_player(game, msg.content)
 
     async def lock_channel(self):
         if self.channel:
@@ -206,7 +206,7 @@ class Jailor(Citizen):
     )
 
     async def day_task(self, game: MafiaGame):
-        if self.jails >= 0:
+        if self.jails <= 0:
             return
         msg = "If you would like to jail someone tonight, provide just their name"
         player = await self.wait_for_player(game, msg)
@@ -271,6 +271,9 @@ class Lookout(Citizen):
         await self.channel.send("\N{THUMBS UP SIGN}")
 
     async def post_night_task(self, game: MafiaGame):
+        if self.watching is None:
+            return
+
         visitors = self.watching.visited_by
 
         if visitors:
@@ -368,7 +371,7 @@ class Executioner(Independent):
             # If target is lynched
             self.target.lynched
             # If target is dead by not lynching, and WE'RE lynched
-            or (self.target.dead and not self.target.lynced and self.lynched)
+            or (self.target.dead and not self.target.lynched and self.lynched)
             # If we were killed by someone who isn't mafia
             or (self.dead and self.killed_by and not self.killed_by.is_mafia)
         )
@@ -383,8 +386,9 @@ class Arsonist(Independent):
 
     async def night_task(self, game: MafiaGame):
         doused = [p for p in game.players if p.doused and not p.dead]
+        doused_msg = [p.member.name for p in doused]
         undoused = [p.member.name for p in game.players if not p.doused and not p.dead]
-        msg = f"Choose a target to douse, if you choose yourself you will ignite all doused targets. Doused targets:\n\n{doused}\n\n"
+        msg = f"Doused targets:\n\n{doused_msg}. Choose a target to douse, if you choose yourself you will ignite all doused targets"
 
         player = await self.wait_for_player(
             game, msg, only_others=False, choices=undoused
@@ -397,6 +401,8 @@ class Arsonist(Independent):
         else:
             player.doused = True
             player.visit()
+
+        await self.channel.send("\N{THUMBS UP SIGN}")
 
     def win_condition(self, game: MafiaGame) -> bool:
         return game.total_alive == 1 and not self.dead

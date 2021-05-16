@@ -548,6 +548,7 @@ class MafiaGame:
         for task in pending:
             task.cancel()
 
+        await self.mafia_chat.send("\N{THUMBS UP SIGN}")
         await self.lock_mafia_channel()
 
     async def pre_day(self):
