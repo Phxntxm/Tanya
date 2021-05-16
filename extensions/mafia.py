@@ -79,14 +79,14 @@ class Mafia(commands.Cog):
     @commands.guild_only()
     async def mafia_stop(self, ctx):
         """Stops an ongoing game of Mafia"""
+        await ctx.send("\N{THUMBS UP SIGN}")
+
         game = self.games.get(ctx.guild.id)
         if game is not None:
             del self.games[ctx.guild.id]
             task, game = game
             task.cancel()
             await game.cleanup_channels()
-
-        await ctx.message.add_reaction("\N{THUMBS UP SIGN}")
 
     @mafia_start.error
     async def clean_mafia_games(self, ctx, error):
