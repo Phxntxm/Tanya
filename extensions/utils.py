@@ -129,7 +129,7 @@ def private_channel_check(
             return False
         # Check the choosing self
         if not can_choose_self and player == p:
-            game.ctx.bot.loop.create_task(p.channel.send("You cannot save yourself"))
+            game.ctx.bot.loop.create_task(p.channel.send("You cannot chooose yourself"))
         elif p is not None:
             return True
 

@@ -124,6 +124,8 @@ class MafiaGame:
         # If we're not on day one, notify that you can nominate
         if self._day > 1:
             fmt += f"**Type >>nominate member to nominate someone to be lynched**. Chat in {self.chat.mention}\n\n"
+        else:
+            fmt += "Chat in {self.chat.mention}\n\n"
         # Add the recent actions
         fmt += "**Recent Actions**\n"
         fmt += "\n".join(current_notifications)
@@ -520,21 +522,25 @@ class MafiaGame:
             if not player.is_mafia and not player.dead
         )
 
-        await self.mafia_chat.send(
-            "**Godfather:** Type the member's name to kill someone. Alive players are:\n"
-            f"{msg}"
-        )
-
-        async def mafia_check():
-            msg = await self.ctx.bot.wait_for(
-                "message",
-                check=self.ctx.bot.mafia_kill_check(self),
+        godfather = self.godfather
+        if godfather.night_role_blocked:
+            await self.mafia_chat("The godfather cannot kill tonight!")
+        else:
+            await self.mafia_chat.send(
+                "**Godfather:** Type the member's name to kill someone. Alive players are:\n"
+                f"{msg}"
             )
-            player = self.ctx.bot.get_mafia_player(self, msg.content)
-            player.kill(self.godfather)
-            await self.mafia_chat.send("\N{THUMBS UP SIGN}")
 
-        tasks.append(mafia_check())
+            async def mafia_check():
+                msg = await self.ctx.bot.wait_for(
+                    "message",
+                    check=self.ctx.bot.mafia_kill_check(self),
+                )
+                player = self.ctx.bot.get_mafia_player(self, msg.content)
+                player.kill(godfather)
+                await self.mafia_chat.send("\N{THUMBS UP SIGN}")
+
+            tasks.append(mafia_check())
 
         for p in self.players:
             if p.dead or p.night_role_blocked:

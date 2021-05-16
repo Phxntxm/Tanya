@@ -122,7 +122,8 @@ class Player:
         await self.channel.send(message + f". Choices are:\n{choices}")
 
         msg = await game.ctx.bot.wait_for(
-            "message", check=game.ctx.bot.private_channel_check(game, self)
+            "message",
+            check=game.ctx.bot.private_channel_check(game, self, not only_others),
         )
         return game.ctx.bot.get_mafia_player(game, msg.content)
 
@@ -219,12 +220,13 @@ class Jailor(Citizen):
     async def night_task(self, game: MafiaGame):
         if self.jailed:
             await game.jail.set_permissions(self.jailed.member, read_messages=True)
-            self.jailed = None
             game.ctx.bot.loop.create_task(self.unjail(game))
 
     async def unjail(self, game: MafiaGame):
+        member = self.jailed.member
+        self.jailed = None
         await asyncio.sleep(game._config.night_length)
-        await game.jail.set_permissions(self.jailed.member, read_messages=False)
+        await game.jail.set_permissions(member, read_messages=False)
 
 
 class PI(Citizen):
@@ -388,7 +390,7 @@ class Arsonist(Independent):
         doused = [p for p in game.players if p.doused and not p.dead]
         doused_msg = "\n".join(p.member.name for p in doused)
         undoused = [p.member.name for p in game.players if not p.doused and not p.dead]
-        msg = f"Doused targets:\n\n{doused_msg}. Choose a target to douse, if you choose yourself you will ignite all doused targets"
+        msg = f"Doused targets:\n\n{doused_msg}\nChoose a target to douse, if you choose yourself you will ignite all doused targets"
 
         player = await self.wait_for_player(
             game, msg, only_others=False, choices=undoused
