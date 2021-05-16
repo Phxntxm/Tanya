@@ -27,15 +27,11 @@ class CustomContext(commands.Context):
         # usually cancelled, therefore cancelled() doesn't actually catch this case
         try:
             if future.cancelled():
-                self.bot.loop.create_task(
-                    self.bot.error_channel.send(f"Future: {future} has been cancelled")
-                )
+                return
             elif exc := future.exception():
                 self.bot.loop.create_task(self.bot.log_error(exc, self.bot, self))
         except asyncio.CancelledError:
-            self.bot.loop.create_task(
-                self.bot.error_channel.send(f"Future: {future} has been cancelled")
-            )
+            return
 
 
 def get_mafia_player(game: MafiaGame, arg: str) -> Player:
