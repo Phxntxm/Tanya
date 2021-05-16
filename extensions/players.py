@@ -47,10 +47,13 @@ class DefenseType(Enum):
 
 
 class Player:
+    # Different bools to determine player type
     is_mafia: bool = False
     is_citizen: bool = False
     is_independent: bool = False
     is_godfather: bool = False
+    is_jailer: bool = False
+
     channel: discord.TextChannel = None
     dead: bool = False
     # Players that affect this player
@@ -197,7 +200,7 @@ class Sheriff(Citizen):
 
 
 class Jailor(Citizen):
-
+    is_jailer: bool = True
     jails: int = 3
     jailed: Player = None
     defense_type: DefenseType.powerful
@@ -438,3 +441,5 @@ def teardown(bot):
     del bot.__special_mafia__
     del bot.__special_roles__
     del bot.__special_independents__
+    del bot.mafia_role
+    del bot.citizen_role

@@ -2,12 +2,13 @@ import asyncio
 import collections
 import dataclasses
 import discord
-from discord import player
 from discord.ext import commands
 from discord.mentions import AllowedMentions
-from extensions import players
 import random
 import typing
+
+if typing.TYPE_CHECKING:
+    from extensions import players
 
 
 default_role_overwrites = discord.PermissionOverwrite(
@@ -237,8 +238,7 @@ class MafiaGame:
             if player.is_mafia:
                 channels_needed["mafia_chat"][player.member] = user_overwrites
             # If jailor, let them see jail
-            if isinstance(player, players.Jailor):
-                await self.ctx.send("Jailor overwrite should be set!")
+            if player.is_jailer:
                 channels_needed["jail"][player.member] = user_overwrites
             # Let everyone see the chat and info
             channels_needed["chat"][player.member] = user_overwrites
