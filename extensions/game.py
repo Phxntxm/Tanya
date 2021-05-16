@@ -125,7 +125,7 @@ class MafiaGame:
         if self._day > 1:
             fmt += f"**Type >>nominate member to nominate someone to be lynched**. Chat in {self.chat.mention}\n\n"
         else:
-            fmt += "Chat in {self.chat.mention}\n\n"
+            fmt += f"Chat in {self.chat.mention}\n\n"
         # Add the recent actions
         fmt += "**Recent Actions**\n"
         fmt += "\n".join(current_notifications)
@@ -522,7 +522,7 @@ class MafiaGame:
 
         godfather = self.godfather
         if godfather.night_role_blocked:
-            await self.mafia_chat("The godfather cannot kill tonight!")
+            await self.mafia_chat.send("The godfather cannot kill tonight!")
         else:
             await self.mafia_chat.send(
                 "**Godfather:** Type the member's name to kill someone. Alive players are:\n"
