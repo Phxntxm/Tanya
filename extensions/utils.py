@@ -23,7 +23,11 @@ class CustomContext(commands.Context):
         return task
 
     def _log_future_error(self, future: asyncio.Future):
-        if exc := future.exception():
+        if future.cancelled():
+            self.bot.loop.create_task(
+                self.bot.error_channel.send(f"Future: {future} has been cancelled")
+            )
+        elif exc := future.exception():
             self.bot.loop.create_task(self.bot.log_error(exc, self.bot, self))
 
 
