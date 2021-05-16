@@ -4,6 +4,7 @@ import dataclasses
 import discord
 from discord import player
 from discord.ext import commands
+from discord.mentions import AllowedMentions
 from extensions import players
 import random
 import typing
@@ -161,7 +162,7 @@ class MafiaGame:
                 if player.is_citizen:
                     await self.chat.send("Game over, Citizens have won!")
                 # If they're Mafia, say the Mafia won
-                if player.is_independent:
+                if player.is_mafia:
                     await self.chat.send("Game over, Mafia has won!")
                 return True
 
@@ -494,9 +495,9 @@ class MafiaGame:
 
         # Send a message with everyone's roles
         msg = "\n".join(
-            f"{player.member.display_name} ({player})" for player in self.players
+            f"{player.member.mention} ({player})" for player in self.players
         )
-        await self.ctx.send(msg)
+        await self.ctx.send(msg, allowed_mentions=AllowedMentions(users=False))
         await asyncio.sleep(60)
         await self.cleanup_channels()
 
@@ -531,6 +532,7 @@ class MafiaGame:
             )
             player = self.ctx.bot.get_mafia_player(self, msg.content)
             player.kill(self.godfather)
+            await self.mafia_chat.send("\N{THUMBS UP SIGN}")
 
         tasks.append(mafia_check())
 
@@ -548,7 +550,6 @@ class MafiaGame:
         for task in pending:
             task.cancel()
 
-        await self.mafia_chat.send("\N{THUMBS UP SIGN}")
         await self.lock_mafia_channel()
 
     async def pre_day(self):
@@ -578,10 +579,10 @@ class MafiaGame:
                     else:
                         # Notify of their killer's role
                         notifs.append(
-                            f"- {player.member.display_name} ({player}) was killed by {killer}"
+                            f"- {player.member.mention} ({player}) was killed by {killer}"
                         )
                         await self.chat.send(
-                            f"- {player.member.display_name} ({player}) was killed during the night!"
+                            f"- {player.member.mention} ({player}) was killed during the night!"
                         )
                         player.dead = True
                         await player.member.remove_roles(self._alive_game_role)
@@ -645,7 +646,7 @@ class MafiaGame:
             )
             # If we've passed to here that's two nominations
             msg = await self.chat.send(
-                f"{nominations['nomination'].member.display_name} is nominated for hanging! React to vote "
+                f"{nominations['nomination'].member.mention} is nominated for hanging! React to vote "
                 "By the end of the day, all the votes will be tallied. If majority voted yes, they "
                 "will be hung"
             )
@@ -693,7 +694,7 @@ class MafiaGame:
                     if player.is_godfather:
                         await self.choose_godfather()
                 await self.day_notification(
-                    f"- The town lynched **{player.member.display_name}**({player})"
+                    f"- The town lynched **{player.member.mention}**({player})"
                 )
                 await player.member.remove_roles(self._alive_game_role)
                 await self.dead_chat.set_permissions(player.member, read_messages=True)

@@ -19,6 +19,7 @@ def get_mafia_player(game: MafiaGame, arg: str) -> Player:
             "No game playing for this guild, cannot grab players"
         )
 
+    result = None
     players = game.players
     match = re.match(r"([0-9]{15,20})$", arg) or re.match(r"<@!?([0-9]{15,20})>$", arg)
     if match is None:
@@ -88,6 +89,9 @@ def nomination_check(
         else:
             # Don't let them nominate themselves
             if nominator == player:
+                return False
+            # Check if dead
+            if player.dead:
                 return False
             # Don't let mafia get nominated during mafia nomination
             if mafia and player.is_mafia:

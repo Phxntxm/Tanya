@@ -218,8 +218,8 @@ class Jailor(Citizen):
 
     async def night_task(self, game: MafiaGame):
         if self.jailed:
-            self.jailed = None
             await game.jail.set_permissions(self.jailed.member, read_messages=True)
+            self.jailed = None
             game.ctx.bot.loop.create_task(self.unjail(game))
 
     async def unjail(self, game: MafiaGame):
@@ -249,11 +249,11 @@ class PI(Citizen):
             or (player1.is_independent and player2.is_independent)
         ):
             await self.channel.send(
-                f"{player1.member.display_name} and {player2.member.display_name} have the same alignment"
+                f"{player1.member.mention} and {player2.member.mention} have the same alignment"
             )
         else:
             await self.channel.send(
-                f"{player1.member.display_name} and {player2.member.display_name} do not have the same alignment"
+                f"{player1.member.mention} and {player2.member.mention} do not have the same alignment"
             )
 
 
@@ -363,7 +363,7 @@ class Executioner(Independent):
 
     def startup_channel_message(self, game: MafiaGame):
         self.target = random.choice([p for p in game.players if p.is_citizen])
-        self.description += f". Your target is {self.target.member.display_name}"
+        self.description += f". Your target is {self.target.member.mention}"
         return super().startup_channel_message(game)
 
     def win_condition(self, game: MafiaGame):
@@ -386,7 +386,7 @@ class Arsonist(Independent):
 
     async def night_task(self, game: MafiaGame):
         doused = [p for p in game.players if p.doused and not p.dead]
-        doused_msg = [p.member.name for p in doused]
+        doused_msg = "\n".join(p.member.name for p in doused)
         undoused = [p.member.name for p in game.players if not p.doused and not p.dead]
         msg = f"Doused targets:\n\n{doused_msg}. Choose a target to douse, if you choose yourself you will ignite all doused targets"
 
