@@ -203,7 +203,7 @@ class Jailor(Citizen):
     is_jailer: bool = True
     jails: int = 3
     jailed: Player = None
-    defense_type: DefenseType.powerful
+    defense_type = DefenseType.powerful
     description = (
         "Each night you can choose to jail one person, during that night they "
         "will be able to see the jail chat, allowing you to converse with them. They "
@@ -324,7 +324,7 @@ class Independent(Player):
 
 
 class Survivor(Independent):
-    vests = 4
+    vests: int = 4
     defense_type = DefenseType.basic
     description = (
         "You must survive, each night you have the choice to use a bulletproof "
@@ -421,7 +421,7 @@ class Arsonist(Independent):
 
 __special_mafia__ = ()
 __special_citizens__ = (Doctor, Sheriff, PI, Jailor, Lookout)
-__special_independents__ = (Jester, Executioner, Arsonist)
+__special_independents__ = (Jester, Executioner, Arsonist, Survivor)
 
 __special_roles__ = __special_mafia__ + __special_citizens__ + __special_independents__
 
