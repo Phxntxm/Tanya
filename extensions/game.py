@@ -119,6 +119,7 @@ class MafiaGame:
                 continue
             alive_players[str(player)] = alive_players.get(str(player), 0) + 1
         fmt += "\n".join(f"{key}: {count}" for key, count in alive_players.items())
+        fmt += "\n\n"
         # If we're not on day one, notify that you can nominate
         if self._day > 1:
             fmt += f"**Type >>nominate member to nominate someone to be lynched**. Chat in {self.chat.mention}\n\n"
@@ -469,7 +470,7 @@ class MafiaGame:
 
         # Schedule all the post night tasks
         for player in self.players:
-            self.ctx.bot.loop.create_task(player.post_night_task())
+            self.ctx.bot.loop.create_task(player.post_night_task(self))
 
         return False
 
@@ -528,7 +529,7 @@ class MafiaGame:
                 "message",
                 check=self.ctx.bot.mafia_kill_check(self),
             )
-            player = self.ctx.bot.get_mafia_player(msg.content)
+            player = self.ctx.bot.get_mafia_player(self, msg.content)
             player.kill(self.godfather)
 
         tasks.append(mafia_check())

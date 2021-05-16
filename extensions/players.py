@@ -118,7 +118,7 @@ class Player:
                     continue
                 choices.append(p.member.name)
         # Turn into string
-        "\n".join(choices)
+        choices = "\n".join(choices)
         await self.channel.send(message + f". Choices are:\n{choices}")
 
         msg = await game.ctx.bot.wait_for(
@@ -237,10 +237,10 @@ class PI(Citizen):
         # Get everyone alive
         choices = [p.member.name for p in game.players if not p.dead]
         msg = "Provide the first person to check their alignments"
-        player1 = await self.wait_for_player(game, msg, custom_choices=choices)
+        player1 = await self.wait_for_player(game, msg, choices=choices)
         choices.remove(player1.member.name)
         msg = "Provide the second person to check their alignments"
-        player2 = await self.wait_for_player(game, msg, custom_choices=choices)
+        player2 = await self.wait_for_player(game, msg, choices=choices)
 
         # Now compare the two people
         if (
@@ -268,6 +268,7 @@ class Lookout(Citizen):
     async def night_task(self, game: MafiaGame):
         msg = "Provide the player you want to watch tonight, at the end of the night I will let you know who visited them"
         self.watching = await self.wait_for_player(game, msg)
+        await self.channel.send("\N{THUMBS UP SIGN}")
 
     async def post_night_task(self, game: MafiaGame):
         visitors = self.watching.visited_by
@@ -382,7 +383,7 @@ class Arsonist(Independent):
 
     async def night_task(self, game: MafiaGame):
         doused = [p for p in game.players if p.doused and not p.dead]
-        undoused = [p for p in game.players if not p.doused and not p.dead]
+        undoused = [p.member.name for p in game.players if not p.doused and not p.dead]
         msg = f"Choose a target to douse, if you choose yourself you will ignite all doused targets. Doused targets:\n\n{doused}\n\n"
 
         player = await self.wait_for_player(
@@ -391,7 +392,6 @@ class Arsonist(Independent):
 
         # Ignite
         if player == self:
-
             for player in doused:
                 player.kill(self)
         else:
