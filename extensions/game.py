@@ -168,7 +168,7 @@ class MafiaGame:
 
     async def choose_godfather(self):
         godfather = self._rand.choice(
-            p for p in self.players if p.is_mafia and not p.dead
+            [p for p in self.players if p.is_mafia and not p.dead]
         )
         godfather.is_godfather = True
 
