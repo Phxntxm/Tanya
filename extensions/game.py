@@ -100,7 +100,7 @@ class MafiaGame:
         embed.set_thumbnail(
             url="https://www.jing.fm/clipimg/full/132-1327252_half-moon-png-images-moon-clipart-png.png"
         )
-        await self.info.send(content="@here", embed=embed)
+        await self.info.send(content=self._alive_game_role.mention, embed=embed)
 
     def add_day_notification(self, *notifications: str):
         msg, current_notifications = self._day_notifications.get(self._day, (None, []))
@@ -137,7 +137,9 @@ class MafiaGame:
             url="https://media.discordapp.net/attachments/840698427755069475/841841923936485416/Sw5vSWOjshUo40xEj-hWqfiRu8Ma2CtYjjh7prRsF6ADPk_z7znpEBf-E3i44U9Hukh3ZJOFhm9S43naa4dEA8pXX4dfAJeEv0bl.png"
         )
         if msg is None:
-            msg = await self.info.send(content="@here", embed=embed)
+            msg = await self.info.send(
+                content=self._alive_game_role.mention, embed=embed
+            )
         else:
             await msg.edit(embed=embed)
 
@@ -231,14 +233,17 @@ class MafiaGame:
         channels_needed["jail"][self.ctx.guild.default_role] = default_role_overwrites
         channels_needed["jail"][self.ctx.guild.me] = bot_overwrites
         for player in self.players:
+            # If mafia let them see mafia
             if player.is_mafia:
                 channels_needed["mafia_chat"][player.member] = user_overwrites
-        # For each player, add their overwrite to the channel
-        for player in self.players:
+            # If jailor, let them see jail
+            if isinstance(player, players.Jailor):
+                await self.ctx.send("Jailor overwrite should be set!")
+                channels_needed["jail"][player.member] = user_overwrites
+            # Let everyone see the chat and info
             channels_needed["chat"][player.member] = user_overwrites
             channels_needed["info"][player.member] = user_overwrites
-            if isinstance(player, players.Jailor):
-                channels_needed["jail"][player.member] = user_overwrites
+            # Their player channel
             channels_needed[player][
                 self.ctx.guild.default_role
             ] = default_role_overwrites
@@ -535,8 +540,14 @@ class MafiaGame:
                     check=self.ctx.bot.mafia_kill_check(self),
                 )
                 player = self.ctx.bot.get_mafia_player(self, msg.content)
-                player.kill(godfather)
-                await self.mafia_chat.send("\N{THUMBS UP SIGN}")
+                # They were protected during the day
+                if player.protected_by and player.protected_by > godfather.attack_type:
+                    await self.mafia_chat(
+                        "That target has been protected for the night! Your attack failed!"
+                    )
+                else:
+                    player.kill(godfather)
+                    await self.mafia_chat.send("\N{THUMBS UP SIGN}")
 
             tasks.append(mafia_check())
 
@@ -655,6 +666,7 @@ class MafiaGame:
                 "will be hung"
             )
             await msg.add_reaction("\N{THUMBS UP SIGN}")
+            await msg.add_reaction("\N{THUMBS DOWN SIGN}")
 
         for p in self.players:
             # Dead players can't do shit
@@ -676,11 +688,18 @@ class MafiaGame:
         if msg:
             # Reactions aren't updated in place, need to refetch
             msg = await msg.channel.fetch_message(msg.id)
-            count = (
-                discord.utils.get(msg.reactions, emoji="\N{THUMBS UP SIGN}").count - 1
-            )
+            yes_votes = discord.utils.get(msg.reactions, emoji="\N{THUMBS UP SIGN}")
+            no_votes = discord.utils.get(msg.reactions, emoji="\N{THUMBS DOWN SIGN}")
+            yes_count = 0
+            no_count = 0
+            async for user in yes_votes.users():
+                if [p for p in self.players if p.member == user and not p.dead]:
+                    yes_count += 1
+            async for user in no_votes.users():
+                if [p for p in self.players if p.member == user and not p.dead]:
+                    no_count += 1
             # The lynching happened
-            if count > self.total_alive / 2:
+            if yes_count > no_count:
                 player = nominations["nomination"]
                 player.dead = True
                 player.lynched = True

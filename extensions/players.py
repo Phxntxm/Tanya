@@ -200,6 +200,7 @@ class Jailor(Citizen):
 
     jails: int = 3
     jailed: Player = None
+    defense_type: DefenseType.powerful
     description = (
         "Each night you can choose to jail one person, during that night they "
         "will be able to see the jail chat, allowing you to converse with them. They "
@@ -212,6 +213,7 @@ class Jailor(Citizen):
         msg = "If you would like to jail someone tonight, provide just their name"
         player = await self.wait_for_player(game, msg)
         player.night_role_blocked = True
+        player.protect(self)
         self.jailed = player
 
         self.jails -= 1
@@ -406,7 +408,7 @@ class Arsonist(Independent):
                 player.kill(self)
         else:
             player.doused = True
-            player.visit()
+            player.visit(self)
 
         await self.channel.send("\N{THUMBS UP SIGN}")
 
