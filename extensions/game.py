@@ -502,7 +502,7 @@ class MafiaGame:
                 special_roles, amount_of_mafia, min_players, max_players
             )
             await self.ctx.send(
-                "In the future you can provide this to the mafia start command"
+                "In the future you can provide this to the mafia start command "
                 f"to use the exact same configuration:\n{h}"
             )
             # Now that the setup is done, create the configuration for the game
