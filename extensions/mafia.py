@@ -37,13 +37,9 @@ class RolesSource(menus.ListPageSource):
             icon_url=menu.ctx.bot.user.avatar_url,
         )
         for role in entries:
-            # Don't want the description to be too long
-            description = (
-                role.description
-                if len(role.description) <= 50
-                else role.description[:50] + "..."
+            embed.add_field(
+                name=role.__name__, value=role.short_description, inline=False
             )
-            embed.add_field(name=role.__name__, value=description, inline=False)
 
         embed.set_footer(text=f"Page {menu.current_page + 1}/{self._max_pages}")
         return embed
@@ -131,7 +127,8 @@ class Mafia(commands.Cog):
     async def mafia_role(self, ctx, role: Player):
         """Displays the information for the provided role"""
         embed = discord.Embed(
-            title="Roles",
+            title=role,
+            description=role.description,
             color=0xFF0000,
             timestamp=datetime.utcnow(),
         )
@@ -140,7 +137,6 @@ class Mafia(commands.Cog):
             url="https://discord.gg/B6qJ4NKGvp",
             icon_url=ctx.bot.user.avatar_url,
         )
-        embed.add_field(name=role, value=role.description, inline=False)
         await ctx.send(embed=embed)
 
     @mafia_start.error

@@ -51,6 +51,8 @@ class DefenseType(Enum):
 class Player:
     # This ID will be used for our hex config representation
     id: int = None
+    description: str = ""
+    short_description: str = ""
     # Different bools to determine player type
     is_mafia: bool = False
     is_citizen: bool = False
@@ -169,6 +171,7 @@ class Player:
 class Citizen(Player):
     id = 0
     is_citizen = True
+    short_description = "Stay alive and lynch all mafia"
     description = "Your win condition is lynching all mafia, you do not have a special role during the night"
 
     def win_condition(self, game):
@@ -178,6 +181,7 @@ class Citizen(Player):
 class Doctor(Citizen):
     id = 1
     defense_type = DefenseType.powerful
+    short_description = "Save one person each night"
     description = (
         "During the night you can choose one person to save. "
         "They cannot be killed by a basic attack during that night"
@@ -194,6 +198,7 @@ class Doctor(Citizen):
 class Sheriff(Citizen):
     id = 2
     attack_type = AttackType.basic
+    short_description = "Try to shoot one bad person during the night"
     description = (
         "During the night you can choose one person to shoot. "
         "If they are mafia, they will die... however if they are a citizen, you die instead"
@@ -220,6 +225,7 @@ class Jailor(Citizen):
     jails: int = 3
     jailed: Player = None
     defense_type = DefenseType.powerful
+    short_description = "Jail someone to talk to them during the night"
     description = (
         "Each night you can choose to jail one person, during that night they "
         "will be able to see the jail chat, allowing you to converse with them. They "
@@ -252,6 +258,7 @@ class Jailor(Citizen):
 
 class PI(Citizen):
     id = 4
+    short_description = "Investigate the alliances of members"
     description = (
         "Every night you can provide "
         "2 people, and see if their alignment is the same"
@@ -284,6 +291,7 @@ class PI(Citizen):
 class Lookout(Citizen):
     id = 5
     watching: Player = None
+    short_description = "Watch someone each not to see who visits them"
     description = (
         "Your job is to watch carefully, every night you can watch one person "
         "and will see who has visited them"
@@ -345,6 +353,7 @@ class Survivor(Independent):
     id = 150
     vests: int = 4
     defense_type = DefenseType.basic
+    short_description = "Survive!"
     description = (
         "You must survive, each night you have the choice to use a bulletproof "
         "vest which will save you from a basic attack. You only have 4 vests"
@@ -375,6 +384,7 @@ class Survivor(Independent):
 class Jester(Independent):
     id = 151
     limit = 1
+    short_description = "Get lynched by the time"
     description = "Your win condition is getting lynched or killed by the innocent"
 
     def win_condition(self, game):
@@ -387,6 +397,7 @@ class Executioner(Independent):
     id = 152
     limit = 1
     target = None
+    short_description = "Get your target lynched"
     description = (
         "Your win condition is getting a certain player lynched. If they "
         "die without getting lynched, you become a Jester. Your goal is to then get "
@@ -412,6 +423,7 @@ class Executioner(Independent):
 class Arsonist(Independent):
     id = 153
     attack_type = AttackType.unstoppable
+    short_description = "Burn them all"
     description = (
         "Your job is simple, douse everyone in fuel and ignite them. You "
         "win if everyone has been ignited and you are the last person left"
