@@ -229,7 +229,8 @@ class Jailor(Citizen):
     description = (
         "Each night you can choose to jail one person, during that night they "
         "will be able to see the jail chat, allowing you to converse with them. They "
-        "will also not be able to perform their normal role that night"
+        "will also not be able to perform their normal role that night\n\n"
+        "**You only have 3 jails available total**"
     )
 
     async def day_task(self, game: MafiaGame):
@@ -266,12 +267,18 @@ class PI(Citizen):
 
     async def night_task(self, game):
         # Get everyone alive
-        choices = [p.member.name for p in game.players if not p.dead]
+        choices = [p.member.name for p in game.players if not p.dead and p != self]
         msg = "Who is the first person you want to investigate"
         player1 = await self.wait_for_player(game, msg, choices=choices)
         choices.remove(player1.member.name)
-        msg = "Who is the second person you want to investigate"
-        player2 = await self.wait_for_player(game, msg, choices=choices)
+
+        while True:
+            msg = "Who is the second person you want to investigate"
+            player2 = await self.wait_for_player(game, msg, choices=choices)
+            if player2 == player1:
+                await self.channel.send("You can't choose the same person twice")
+            else:
+                break
 
         # Now compare the two people
         if (

@@ -29,7 +29,7 @@ default_role_disabled_overwrites = discord.PermissionOverwrite(
 )
 jail_overwrites = discord.PermissionOverwrite(
     read_messages=False,
-    send_messages=False,
+    send_messages=True,
     read_message_history=False,
     attach_files=False,
     add_reactions=False,
@@ -575,7 +575,12 @@ class MafiaGame:
         await self.unlock_mafia_channel()
         # Schedule tasks. Add the asyncio sleep to *ensure* we sleep that long
         # even if everyone finishes early
-        tasks = [self.ctx.create_task(asyncio.sleep(self._config.night_length))]
+        async def night_sleep():
+            await asyncio.sleep(self._config.night_length - 20)
+            await self.mafia_chat.send("Night is about to end in 20 seconds")
+            await asyncio.sleep(20)
+
+        tasks = [self.ctx.create_task(night_sleep())]
         msg = "\n".join(
             player.member.name
             for player in self.players
@@ -598,7 +603,10 @@ class MafiaGame:
                 )
                 player = self.ctx.bot.get_mafia_player(self, msg.content)
                 # They were protected during the day
-                if player.protected_by and player.protected_by > godfather.attack_type:
+                if (
+                    player.protected_by
+                    and player.protected_by.defense_type > godfather.attack_type
+                ):
                     await self.mafia_chat(
                         "That target has been protected for the night! Your attack failed!"
                     )
@@ -772,7 +780,11 @@ class MafiaGame:
                         player.member, read_messages=True, send_messages=False
                     )
                     if player.is_godfather:
-                        await self.choose_godfather()
+                        try:
+                            await self.choose_godfather()
+                        # If there's mafia, citizens win. Just return, the cycle will handle it
+                        except IndexError:
+                            return
                 await self.day_notification(
                     f"- The town lynched **{player.member.mention}**({player})"
                 )
