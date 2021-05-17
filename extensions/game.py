@@ -353,7 +353,7 @@ class MafiaGame:
                 if start_timeout:
                     nonlocal timer_not_started
                     timer_not_started = False
-                    embed.description += f"\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players reached"
+                    embed.description += f"\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players ({max_players}) reached"
                     embed.set_footer(
                         text=f"{len(game_players)}/{min_players} Needed to join"
                     )
@@ -495,6 +495,8 @@ class MafiaGame:
             special_roles = await self._setup_special_roles(
                 len(self._members), amount_of_mafia
             )
+            # Convert the tuple of player, amount to just a list of all roles
+            special_roles = [role for (role, amt) in special_roles for i in range(amt)]
             # Get hex to allow them to use this setup in the future
             h = ctx.bot.players_to_hex(
                 special_roles, amount_of_mafia, min_players, max_players
