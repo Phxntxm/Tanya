@@ -583,27 +583,29 @@ class MafiaGame:
             await asyncio.sleep(20)
 
         tasks = [self.ctx.create_task(night_sleep())]
-        msg = "\n".join(
-            player.member.name
-            for player in self.players
+        mapping = {
+            count: player.member.name
+            for count, player in enumerate(self.players)
             if not player.is_mafia and not player.dead
-        )
+        }
+        msg = "\n".join(f"{count}: {player}" for count, player in mapping.items())
 
         godfather = self.godfather
         if godfather.night_role_blocked:
             await self.mafia_chat.send("The godfather cannot kill tonight!")
         else:
             await self.mafia_chat.send(
-                "**Godfather:** Type the member's name to kill someone. Alive players are:\n"
-                f"{msg}"
+                "**Godfather:** Type the number assigned to a member to kill someone. "
+                f"Alive players are:\n{msg}"
             )
 
             async def mafia_check():
                 msg = await self.ctx.bot.wait_for(
                     "message",
-                    check=self.ctx.bot.mafia_kill_check(self),
+                    check=self.ctx.bot.mafia_kill_check(self, mapping),
                 )
-                player = self.ctx.bot.get_mafia_player(self, msg.content)
+                player = mapping[int(msg.content)]
+                player = self.ctx.bot.get_mafia_player(self, player)
                 # They were protected during the day
                 if (
                     player.protected_by

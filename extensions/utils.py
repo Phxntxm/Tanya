@@ -200,7 +200,10 @@ def nomination_check(
 
 
 def private_channel_check(
-    game: MafiaGame, player: Player, can_choose_self: bool = False
+    game: MafiaGame,
+    player: Player,
+    mapping: typing.Dict[int, str],
+    can_choose_self: bool = False,
 ) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
@@ -208,10 +211,12 @@ def private_channel_check(
             return False
         elif m.author != player.member:
             return False
+        # Now make sure it's a num, and in our mapping
         # Set the player for use after
         try:
-            p = game.ctx.bot.get_mafia_player(game, m.content)
-        except commands.MemberNotFound:
+            p = mapping[int(m.content)]
+            p = game.ctx.bot.get_mafia_player(game, p)
+        except (KeyError, IndexError, commands.MemberNotFound):
             return False
         # Check the choosing self
         if not can_choose_self and player == p:
@@ -222,7 +227,9 @@ def private_channel_check(
     return check
 
 
-def mafia_kill_check(game: MafiaGame) -> typing.Callable:
+def mafia_kill_check(
+    game: MafiaGame, mapping: typing.Dict[int, str]
+) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
         if m.channel != game.mafia_chat:
@@ -231,8 +238,9 @@ def mafia_kill_check(game: MafiaGame) -> typing.Callable:
             return False
         # Set the player for use after
         try:
-            p = game.ctx.bot.get_mafia_player(game, m.content)
-        except commands.MemberNotFound:
+            p = mapping[int(m.content)]
+            p = game.ctx.bot.get_mafia_player(game, p)
+        except (KeyError, IndexError, commands.MemberNotFound):
             return False
         else:
             if p.is_mafia:

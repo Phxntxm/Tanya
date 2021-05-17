@@ -135,14 +135,18 @@ class Player:
                     continue
                 choices.append(p.member.name)
         # Turn into string
-        choices = "\n".join(choices)
+        mapping = {count: player for count, player in enumerate(choices, start=1)}
+        choices = "\n".join(f"{count}: {player}" for count, player in mapping.items())
         await self.channel.send(message + f". Choices are:\n{choices}")
 
         msg = await game.ctx.bot.wait_for(
             "message",
-            check=game.ctx.bot.private_channel_check(game, self, not only_others),
+            check=game.ctx.bot.private_channel_check(
+                game, self, mapping, not only_others
+            ),
         )
-        return game.ctx.bot.get_mafia_player(game, msg.content)
+        player = mapping[int(msg.content)]
+        return game.ctx.bot.get_mafia_player(game, player)
 
     async def lock_channel(self):
         if self.channel:
@@ -370,7 +374,7 @@ class Survivor(Independent):
 
         msg = await self.channel.send(
             "Click the reaction if you want to protect yourself tonight "
-            f"(You have {self.vests} vests remaining"
+            f"(You have {self.vests} vests remaining)"
         )
         await msg.add_reaction("\N{THUMBS UP SIGN}")
 
