@@ -1,14 +1,10 @@
-from __future__ import annotations
 import asyncio
 from datetime import datetime
-import math
 import typing
 
 import discord
 from discord.ext import commands, menus
-
-if typing.TYPE_CHECKING:
-    from extensions.players import Player
+from extensions.players import Player
 
 
 def stop_check():
@@ -49,7 +45,7 @@ class RolesSource(menus.ListPageSource):
             )
             embed.add_field(name=role, value=description, inline=False)
 
-        embed.set_footer(text=f"Page {self.current_page + 1}/{self._max_pages}")
+        embed.set_footer(text=f"Page {menu.current_page + 1}/{self._max_pages}")
         return embed
 
 
@@ -132,7 +128,7 @@ class Mafia(commands.Cog):
 
     @mafia.command(name="role")
     @commands.guild_only()
-    async def mafia_role(self, ctx, role):
+    async def mafia_role(self, ctx, role: Player):
         """Displays the information for the provided role"""
         embed = discord.Embed(
             title="Roles",
