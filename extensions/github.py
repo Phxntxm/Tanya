@@ -29,17 +29,21 @@ class Github(commands.Cog):
         unloaded = set()
 
         for commit in response["commits"]:
-            if not c.startswith("extensions/"):
-                continue
             for c in commit["added"]:
+                if not c.startswith("extensions/"):
+                    continue
                 c = c.replace("/", ".")[:-3]
                 self.bot.load_extension(c)
                 loaded.add(c)
             for c in commit["removed"]:
+                if not c.startswith("extensions/"):
+                    continue
                 c = c.replace("/", ".")[:-3]
                 self.bot.unload_extension(c)
                 unloaded.add(c)
             for c in commit["modified"]:
+                if not c.startswith("extensions/"):
+                    continue
                 c = c.replace("/", ".")[:-3]
                 self.bot.reload_extension(c)
                 reloaded.add(c)
