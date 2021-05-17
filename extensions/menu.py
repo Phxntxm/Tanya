@@ -44,9 +44,12 @@ class MafiaMenu(menus.MenuPages):
 
     @property
     def allowed_mafia(self):
-        """The amount of non-mafia roles allowed to add"""
-        return self.amount_of_mafia - sum(
-            [v for k, v in self.source.entries if k.is_mafia]
+        """The amount of mafia roles allowed to add"""
+        # Subtract an extra one, because one of them HAS to be Godfather
+        return (
+            self.amount_of_mafia
+            - sum([v for k, v in self.source.entries if k.is_mafia])
+            - 1
         )
 
     @property
