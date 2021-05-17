@@ -1,8 +1,26 @@
+from datetime import datetime
+
 import discord
 from discord.ext import commands
 
 
 class Miscellaneous(commands.Cog):
+    @commands.command()
+    async def help(self, ctx):
+        """Provides useful information for using this bot"""
+        embed = discord.Embed(
+            title="Information",
+            description="Welcome to Tanya Degurechaff, a customizable bot for Mafia type games. This bot emulates the mafia style game, similar to Town of Salem but *does* take some liberties to change some things.\n\nIn order to start a game, simpy use >>mafia start. If you want to see some information on the roles available, run `>>mafia roles`. If you want to see information on a specific role run `>>mafia role Doctor` for example.",
+            color=0xFF0000,
+            timestamp=datetime.utcnow(),
+        )
+        embed.set_author(
+            name="Dev Server",
+            url="https://discord.gg/B6qJ4NKGvp",
+            icon_url=ctx.bot.user.avatar_url,
+        )
+        await ctx.send(embed=embed)
+
     @commands.command(aliases=["invite"])
     async def addbot(self, ctx):
         """Provides a link that you can use to add me to a server"""

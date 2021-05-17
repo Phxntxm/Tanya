@@ -1,10 +1,12 @@
 from __future__ import annotations
-import asyncio
 
-import discord
-from enum import Enum
+import asyncio
 import random
 import typing
+from enum import Enum
+
+import discord
+from discord.ext import commands
 
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
@@ -104,6 +106,14 @@ class Player:
 
     def visit(self, by: Player):
         self.visited_by.append(by)
+
+    @classmethod
+    async def convert(cls, ctx: commands.Context, arg: str) -> Player:
+        cls = next(p for p in __special_roles__ if p.__name__.lower() == arg.lower())
+        if cls:
+            return cls(ctx.author)
+
+        return commands.BadArgument(f"Could not find a role named {arg}")
 
     async def wait_for_player(
         self,

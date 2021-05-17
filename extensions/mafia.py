@@ -1,5 +1,14 @@
+from __future__ import annotations
 import asyncio
-from discord.ext import commands
+from datetime import datetime
+import math
+import typing
+
+import discord
+from discord.ext import commands, menus
+
+if typing.TYPE_CHECKING:
+    from extensions.players import Player
 
 
 def stop_check():
@@ -16,6 +25,34 @@ def stop_check():
     return commands.check(predicate)
 
 
+class RolesSource(menus.ListPageSource):
+    def __init__(self, data: typing.List[Player]):
+        super().__init__(data, per_page=10)
+
+    async def format_page(self, menu: menus.Menu, entries: typing.List[Player]):
+        embed = discord.Embed(
+            title="Roles",
+            color=0xFF0000,
+            timestamp=datetime.utcnow(),
+        )
+        embed.set_author(
+            name="Dev Server",
+            url="https://discord.gg/B6qJ4NKGvp",
+            icon_url=menu.ctx.bot.user.avatar_url,
+        )
+        for role in entries:
+            # Don't want the description to be too long
+            description = (
+                role.description
+                if len(role.description) <= 50
+                else role.description[:50] + "..."
+            )
+            embed.add_field(name=role, value=description, inline=False)
+
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self._max_pages}")
+        return embed
+
+
 class Mafia(commands.Cog):
     games = {}
     # Useful for restarting a game, or getting info on the last game
@@ -23,6 +60,7 @@ class Mafia(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def mafia(self, ctx):
+        """The parent command to handle mafia games"""
         pass
 
     @mafia.command(name="start")
@@ -83,10 +121,37 @@ class Mafia(commands.Cog):
             task.cancel()
             await game.cleanup_channels()
 
+    @mafia.command(name="roles")
+    @commands.guild_only()
+    async def mafia_roles(self, ctx):
+        """Displays the available custom roles"""
+        menu = menus.MenuPages(
+            source=RolesSource(ctx.bot.__special_roles__), clear_reactions_after=True
+        )
+        await menu.start(ctx)
+
+    @mafia.command(name="role")
+    @commands.guild_only()
+    async def mafia_role(self, ctx, role: Player):
+        """Displays the information for the provided role"""
+        embed = discord.Embed(
+            title="Roles",
+            color=0xFF0000,
+            timestamp=datetime.utcnow(),
+        )
+        embed.set_author(
+            name="Dev Server",
+            url="https://discord.gg/B6qJ4NKGvp",
+            icon_url=ctx.bot.user.avatar_url,
+        )
+        embed.add_field(name=role, value=role.description, inline=False)
+        await ctx.send(embed=embed)
+
     @mafia_start.error
     async def clean_mafia_games(self, ctx, error):
         game = self.games.get(ctx.guild.id)
         if game is not None:
+            await ctx.send("Encountered an error, cleaning up channels...")
             del self.games[ctx.guild.id]
             task, game = game
             task.cancel()
