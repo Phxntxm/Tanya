@@ -53,7 +53,7 @@ class Mafia(commands.Cog):
     @commands.group(invoke_without_command=True)
     async def mafia(self, ctx):
         """The parent command to handle mafia games"""
-        pass
+        await ctx.send_help(self.mafia)
 
     @mafia.command(name="start")
     @commands.guild_only()
