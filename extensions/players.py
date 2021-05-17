@@ -376,14 +376,14 @@ class Survivor(Independent):
         )
         await msg.add_reaction("\N{THUMBS UP SIGN}")
 
-        def check(p, _):
+        def check(p):
             return (
                 p.message_id == msg.id
                 and p.user_id == self.member.id
                 and str(p.emoji) == "\N{THUMBS UP SIGN}"
             )
 
-        await game.ctx.bot.wait_for("reaction_add", check=check)
+        await game.ctx.bot.wait_for("raw_reaction_add", check=check)
         self.vests -= 1
         self.protected_by = self
 
