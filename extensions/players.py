@@ -260,17 +260,17 @@ class PI(Citizen):
     id = 4
     short_description = "Investigate the alliances of members"
     description = (
-        "Every night you can provide "
+        "Every night you can investigate "
         "2 people, and see if their alignment is the same"
     )
 
     async def night_task(self, game):
         # Get everyone alive
         choices = [p.member.name for p in game.players if not p.dead]
-        msg = "Provide the first person to check their alignments"
+        msg = "Who is the first person you want to investigate"
         player1 = await self.wait_for_player(game, msg, choices=choices)
         choices.remove(player1.member.name)
-        msg = "Provide the second person to check their alignments"
+        msg = "Who is the second person you want to investigate"
         player2 = await self.wait_for_player(game, msg, choices=choices)
 
         # Now compare the two people
