@@ -414,12 +414,13 @@ class MafiaGame:
                 return_when=asyncio.FIRST_COMPLETED,
                 timeout=300,
             )
-            # If nothing was done, then the timeout happened
-            if not done:
-                raise asyncio.TimeoutError()
 
             for task in pending:
                 task.cancel()
+
+            # If nothing was done, then the timeout happened
+            if not done:
+                raise asyncio.TimeoutError()
 
             return len(game_players) >= min_players
 
