@@ -51,12 +51,7 @@ class Mafia(commands.Cog):
         """Starts another game with the same configuration as the last"""
         game = self.previous_games.get(ctx.guild.id)
         if game:
-            task = ctx.bot.loop.create_task(game.redo())
-            self.games[ctx.guild.id] = (task, game)
-            await task
-            # Remove game once it's done
-            self.previous_games[ctx.guild.id] = game
-            del self.games[ctx.guild.id]
+            await self.mafia_start(game._preconfigured_config)
         else:
             await ctx.send("No previous game detected")
 
