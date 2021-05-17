@@ -249,7 +249,7 @@ class MafiaGame:
             if player.is_mafia:
                 channels_needed["mafia_chat"][player.member] = user_overwrites
             # If jailor, let them see jail
-            if player.is_jailer:
+            if player.is_jailor:
                 channels_needed["jail"][player.member] = user_overwrites
             # Let everyone see the chat and info
             channels_needed["chat"][player.member] = user_overwrites
@@ -547,6 +547,8 @@ class MafiaGame:
         await self.setup_channels()
         # Now choose the godfather
         await self.choose_godfather()
+        # Mafia channel must be locked
+        await self.lock_mafia_channel()
 
         while True:
             if await self._cycle():

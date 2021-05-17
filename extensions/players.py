@@ -281,10 +281,8 @@ class PI(Citizen):
                 break
 
         # Now compare the two people
-        if (
-            (player1.is_citizen and player2.is_citizen)
-            or (player1.is_mafia and player2.is_mafia)
-            or (player1.is_independent and player2.is_independent)
+        if (player1.is_citizen and player2.is_citizen) or (
+            player1.is_mafia and player2.is_mafia
         ):
             await self.channel.send(
                 f"{player1.member.mention} and {player2.member.mention} have the same alignment"
