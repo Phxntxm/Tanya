@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from collections import defaultdict
 
 from extensions.players import Mafia
 import discord
@@ -32,6 +33,70 @@ class CustomContext(commands.Context):
                 self.bot.loop.create_task(self.bot.log_error(exc, self.bot, self))
         except asyncio.CancelledError:
             return
+
+
+def hex_to_players(
+    num: str, all_roles: typing.List[Player]
+) -> typing.Tuple(int, int, int, typing.List[Player]):
+    """Takes in a hex number and converts it to a configuration
+    based on the amount of special roles it specifies"""
+
+    num = int(num, 16)
+    roles_to_play = []
+    # The first 3 sets of 2 of the hex represent the min, max, and amount of mafia
+    min_players = num & 0xFF
+    num = num >> 0x8
+    max_players = num & 0xFF
+    num = num >> 0x8
+    amount_of_mafia = num & 0xFF
+    num = num >> 0x8
+
+    while num != 0:
+        # The rest of the hex is made up of any number of 2 parts of 2
+        # The first part is the role they're specifying
+        role = num & 0xFF
+        # After getting the last bit, shift over two spots
+        num = num >> 0x8
+        # The second is the amount for that role
+        amount = num & 0xFF
+        # Shift again, we're done with this set
+        num = num >> 0x8
+
+        # Get the one with the matching ID
+        role = next(r for r in all_roles if r.id == role)
+        # Add the amount of roles we'll use to the list
+        for _ in range(amount):
+            roles_to_play.append(role)
+
+    return amount_of_mafia, min_players, max_players, roles_to_play
+
+
+def players_to_hex(
+    roles: typing.List[Player],
+    amount_of_mafia: int,
+    min_players: int = None,
+    max_players: int = None,
+) -> str:
+    """Takes in a list of players and produces a hex configuration. If min and max
+    are not provided, then min and max will be the amount of roles"""
+    mapping = {}
+    min_players = min_players if min_players else len(roles)
+    max_players = max_players if max_players else len(roles)
+
+    role_hex = f"{hex(amount_of_mafia)[2:].zfill(2)}{hex(max_players)[2:].zfill(2)}{hex(min_players)[2:].zfill(2)}"
+
+    for role in roles:
+        # Get amount currently set
+        amt = mapping.get(role.id, 0)
+        # Add one
+        amt += 1
+        # Set back in mapping
+        mapping[role.id] = amt
+
+    for role, amt in mapping.items():
+        role_hex = f"{hex(amt)[2:].zfill(2)}{hex(role)[2:].zfill(2)}" + role_hex
+
+    return role_hex
 
 
 def get_mafia_player(game: MafiaGame, arg: str) -> Player:

@@ -47,6 +47,8 @@ class DefenseType(Enum):
 
 
 class Player:
+    # This ID will be used for our hex config representation
+    id: int = None
     # Different bools to determine player type
     is_mafia: bool = False
     is_citizen: bool = False
@@ -155,6 +157,7 @@ class Player:
 
 
 class Citizen(Player):
+    id = 0
     is_citizen = True
     description = "Your win condition is lynching all mafia, you do not have a special role during the night"
 
@@ -163,6 +166,7 @@ class Citizen(Player):
 
 
 class Doctor(Citizen):
+    id = 1
     defense_type = DefenseType.powerful
     description = (
         "During the night you can choose one person to save. "
@@ -178,6 +182,7 @@ class Doctor(Citizen):
 
 
 class Sheriff(Citizen):
+    id = 2
     attack_type = AttackType.basic
     description = (
         "During the night you can choose one person to shoot. "
@@ -200,6 +205,7 @@ class Sheriff(Citizen):
 
 
 class Jailor(Citizen):
+    id = 3
     is_jailer: bool = True
     jails: int = 3
     jailed: Player = None
@@ -235,6 +241,7 @@ class Jailor(Citizen):
 
 
 class PI(Citizen):
+    id = 4
     description = (
         "Every night you can provide "
         "2 people, and see if their alignment is the same"
@@ -265,7 +272,7 @@ class PI(Citizen):
 
 
 class Lookout(Citizen):
-
+    id = 5
     watching: Player = None
     description = (
         "Your job is to watch carefully, every night you can watch one person "
@@ -296,6 +303,7 @@ class Lookout(Citizen):
 
 
 class Mafia(Player):
+    id = 75
     is_mafia = True
     attack_type = AttackType.basic
     description = (
@@ -324,6 +332,7 @@ class Independent(Player):
 
 
 class Survivor(Independent):
+    id = 150
     vests: int = 4
     defense_type = DefenseType.basic
     description = (
@@ -354,6 +363,7 @@ class Survivor(Independent):
 
 
 class Jester(Independent):
+    id = 151
     limit = 1
     description = "Your win condition is getting lynched or killed by the innocent"
 
@@ -364,6 +374,7 @@ class Jester(Independent):
 
 
 class Executioner(Independent):
+    id = 152
     limit = 1
     target = None
     description = (
@@ -389,6 +400,7 @@ class Executioner(Independent):
 
 
 class Arsonist(Independent):
+    id = 153
     attack_type = AttackType.unstoppable
     description = (
         "Your job is simple, douse everyone in fuel and ignite them. You "
@@ -424,6 +436,7 @@ __special_citizens__ = (Doctor, Sheriff, PI, Jailor, Lookout)
 __special_independents__ = (Jester, Executioner, Arsonist, Survivor)
 
 __special_roles__ = __special_mafia__ + __special_citizens__ + __special_independents__
+__all__roles__ = __special_roles__ + (Citizen, Mafia)
 
 
 def setup(bot):
@@ -431,6 +444,7 @@ def setup(bot):
     bot.__special_mafia__ = __special_mafia__
     bot.__special_independents__ = __special_independents__
     bot.__special_roles__ = __special_roles__
+    bot.__all__roles__ = __all__roles__
     # Need the default mafia and citizen role too
     bot.mafia_role = Mafia
     bot.citizen_role = Citizen
@@ -441,5 +455,6 @@ def teardown(bot):
     del bot.__special_mafia__
     del bot.__special_roles__
     del bot.__special_independents__
+    del bot.__all__roles__
     del bot.mafia_role
     del bot.citizen_role

@@ -28,11 +28,11 @@ class Mafia(commands.Cog):
     @mafia.command(name="start")
     @commands.guild_only()
     @commands.max_concurrency(1, per=commands.BucketType.guild)
-    async def mafia_start(self, ctx):
+    async def mafia_start(self, ctx, config: hex = None):
         """Start a game of mafia. Note that currently only one game can run at a time
         per server, this limit may be upped in the future"""
         # This can happen if we're redoing a game
-        game = ctx.bot.MafiaGame(ctx)
+        game = ctx.bot.MafiaGame(ctx, config=config)
         # Store task so it can be cancelled later
         task = ctx.bot.loop.create_task(game.play())
         self.games[ctx.guild.id] = (task, game)

@@ -45,7 +45,7 @@ class MafiaGameConfig:
 
 
 class MafiaGame:
-    def __init__(self, ctx: commands.Context):
+    def __init__(self, ctx: commands.Context, *, config: str):
         # The discord members, we'll produce our list of players later
         self._members: typing.List[discord.Member] = None
         # The actual players of the game
@@ -66,6 +66,8 @@ class MafiaGame:
 
         self._rand = random.SystemRandom()
         self._config: MafiaGameConfig = None
+        # The preconfigured option that can be provided
+        self._preconfigured_config: str = config
         self._day: int = 1
         self._day_notifications = collections.defaultdict(list)
         self._role_list: list = None
@@ -300,30 +302,16 @@ class MafiaGame:
         await self.cleanup_channels()
         await self._start()
 
-    async def _prepare(self):
-        """All the setup needed for the game to play"""
-        # Variables just for easy setting for testing
-        wait_length_for_players_to_join = 10
-        minimum_players_needed = 3
-
+    async def _setup_amount_players(self) -> typing.Tuple(int, int):
         ctx = self.ctx
-        # Get/create the role
-        self._alive_game_role = discord.utils.get(
-            ctx.guild.roles, name=self._alive_game_role_name
-        )
-        if self._alive_game_role is None:
-            self._alive_game_role = await ctx.guild.create_role(
-                name=self._alive_game_role_name, hoist=True
-            )
-        amount_of_specials = [(k, 0) for k in ctx.bot.__special_roles__]
-        menu = ctx.bot.MafiaMenu(source=ctx.bot.MafiaPages(amount_of_specials, ctx))
+        minimum_players_needed = 3
         # Get max players
         await ctx.send(
             "Starting new game of Mafia! Please first select how many players "
             "you want to allow to play the game at maximum?"
         )
         answer = await ctx.bot.wait_for(
-            "message", check=ctx.bot.min_max_check(ctx, minimum_players_needed, 100)
+            "message", check=ctx.bot.min_max_check(ctx, minimum_players_needed, 25)
         )
         max_players = int(answer.content)
         # Min players
@@ -334,6 +322,13 @@ class MafiaGame:
         )
         min_players = int(answer.content)
 
+        return min_players, max_players
+
+    async def _setup_players(
+        self, min_players: int, max_players: int
+    ) -> typing.List[players.Player]:
+        wait_length_for_players_to_join = 10
+        ctx = self.ctx
         game_players = set()
 
         async def wait_for_players():
@@ -437,28 +432,79 @@ class MafiaGame:
                 "DM you.**"
             )
 
-        # Now do the handling of roles
+        return game_players
+
+    async def _setup_amount_mafia(self, players: int) -> int:
+        ctx = self.ctx
         # Get amount of Mafia
         await ctx.send(
-            f"How many mafia members (including special mafia members; Between 1 and {int(len(game_players) / 2)})?"
+            f"How many mafia members (including special mafia members; Between 1 and {int(players / 2)})?"
         )
         answer = await ctx.bot.wait_for(
-            "message", check=ctx.bot.min_max_check(ctx, 1, int(len(game_players) / 2))
+            "message", check=ctx.bot.min_max_check(ctx, 1, int(players / 2))
         )
         amount_of_mafia = int(answer.content)
-        # Special roles
-        menu.amount_of_players = len(game_players)
-        menu.amount_of_mafia = amount_of_mafia
+
+        return amount_of_mafia
+
+    async def _setup_special_roles(
+        self, players: int, mafia: int
+    ) -> typing.List[typing.Tuple(players.Player, int)]:
+        ctx = self.ctx
+        amount_of_specials = [(k, 0) for k in ctx.bot.__special_roles__]
+        menu = ctx.bot.MafiaMenu(source=ctx.bot.MafiaPages(amount_of_specials, ctx))
+
+        menu.amount_of_players = players
+        menu.amount_of_mafia = mafia
         await menu.start(ctx, wait=True)
 
-        # Now that the setup is done, create the configuration for the game
-        self._config = ctx.bot.MafiaGameConfig(
-            menu.amount_of_mafia,
-            # The special roles
-            [role for (role, amt) in amount_of_specials for i in range(amt)],
-            ctx,
+        return amount_of_specials
+
+    async def _prepare(self):
+        """All the setup needed for the game to play"""
+        ctx = self.ctx
+        # Get/create the alive role
+        self._alive_game_role = discord.utils.get(
+            ctx.guild.roles, name=self._alive_game_role_name
         )
-        self._members = game_players
+        if self._alive_game_role is None:
+            self._alive_game_role = await ctx.guild.create_role(
+                name=self._alive_game_role_name, hoist=True
+            )
+
+        # Config is already set
+        if self.self._preconfigured_config:
+            # Convert hex to the stuff we care about
+            (
+                amount_of_mafia,
+                min_players,
+                max_players,
+                special_roles,
+            ) = ctx.bot.hex_to_players(
+                self._preconfigured_config, ctx.bot.__special_roles__
+            )
+            # The only setup we need to do is get the players who will player
+            game_players = await self._setup_players(min_players, max_players)
+            # Set the config
+            self._config = ctx.bot.MafiaGameConfig(amount_of_mafia, special_roles, ctx)
+        else:
+            # Go through normal setup. Amount of players, letting players join, amount of mafia, special roles
+            min_players, max_players = await self._setup_amount_players()
+            self._members = await self._setup_players(min_players, max_players)
+            amount_of_mafia = await self._setup_amount_mafia(len(self._members))
+            special_roles = await self._setup_special_roles(
+                len(self._members), amount_of_mafia
+            )
+            # Get hex to allow them to use this setup in the future
+            h = ctx.bot.players_to_hex(
+                special_roles, amount_of_mafia, min_players, max_players
+            )
+            await self.ctx.send(
+                "In the future you can provide this to the mafia start command"
+                f"to use the exact same configuration:\n{h}"
+            )
+            # Now that the setup is done, create the configuration for the game
+            self._config = ctx.bot.MafiaGameConfig(amount_of_mafia, special_roles, ctx)
 
         for member in self._members:
             await member.add_roles(self._alive_game_role)
