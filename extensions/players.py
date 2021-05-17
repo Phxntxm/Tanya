@@ -58,7 +58,7 @@ class Player:
     is_citizen: bool = False
     is_independent: bool = False
     is_godfather: bool = False
-    is_jailer: bool = False
+    is_jailor: bool = False
 
     channel: discord.TextChannel = None
     dead: bool = False
@@ -221,7 +221,7 @@ class Sheriff(Citizen):
 
 class Jailor(Citizen):
     id = 3
-    is_jailer: bool = True
+    is_jailor: bool = True
     jails: int = 3
     jailed: Player = None
     defense_type = DefenseType.powerful
