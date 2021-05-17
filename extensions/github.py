@@ -24,26 +24,25 @@ class Github(commands.Cog):
         )
         await proc.communicate()
         # Now load/reload/unload based on added/removed/modified
-        loaded = []
-        reloaded = []
-        unloaded = []
+        loaded = set()
+        reloaded = set()
+        unloaded = set()
 
         for commit in response["commits"]:
+            if not c.startswith("extensions/"):
+                continue
             for c in commit["added"]:
-                if c.startswith("extensions/"):
-                    c = c.replace("/", ".")[:-3]
-                    self.bot.load_extension(c)
-                    loaded.append(c)
+                c = c.replace("/", ".")[:-3]
+                self.bot.load_extension(c)
+                loaded.add(c)
             for c in commit["removed"]:
-                if c.startswith("extensions/"):
-                    c = c.replace("/", ".")[:-3]
-                    self.bot.unload_extension(c)
-                    unloaded.append(c)
+                c = c.replace("/", ".")[:-3]
+                self.bot.unload_extension(c)
+                unloaded.add(c)
             for c in commit["modified"]:
-                if c.startswith("extensions/"):
-                    c = c.replace("/", ".")[:-3]
-                    self.bot.reload_extension(c)
-                    reloaded.append(c)
+                c = c.replace("/", ".")[:-3]
+                self.bot.reload_extension(c)
+                reloaded.add(c)
 
         channel = self.bot.get_channel(840698427755069475)
         message = ""
