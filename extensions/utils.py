@@ -281,6 +281,8 @@ def setup(bot):
     bot.private_channel_check = private_channel_check
     bot.mafia_kill_check = mafia_kill_check
     bot.custom_context = CustomContext
+    bot.hex_to_players = hex_to_players
+    bot.players_to_hex = players_to_hex
 
 
 def teardown(bot):
@@ -292,3 +294,5 @@ def teardown(bot):
     del bot.private_channel_check
     del bot.mafia_kill_check
     del bot.custom_context
+    del bot.hex_to_players
+    del bot.players_to_hex
