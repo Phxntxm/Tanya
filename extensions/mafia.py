@@ -69,7 +69,8 @@ class Mafia(commands.Cog):
         try:
             await task
         except asyncio.TimeoutError:
-            pass
+            task.cancel()
+            await ctx.send("Timed out waiting for players to join")
         # Remove game once it's done
         self.previous_games[ctx.guild.id] = game
         del self.games[ctx.guild.id]
