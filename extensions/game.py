@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import dataclasses
+from extensions.players import Player
 import discord
 from discord.ext import commands
 from discord.mentions import AllowedMentions
@@ -65,6 +66,7 @@ class MafiaGame:
         self.chat: discord.TextChannel = None
         self.info: discord.TextChannel = None
         self.jail: discord.TextChannel = None
+        self.jail_webhook: discord.Webhook = None
         self.mafia_chat: discord.TextChannel = None
         self.dead_chat: discord.TextChannel = None
 
@@ -167,22 +169,17 @@ class MafiaGame:
         else:
             await self._role_list.edit(content=msg)
 
-    async def check_winner(self) -> bool:
+    def check_winner(self) -> bool:
         """Loops through all the winners and checks their win conditions"""
         for player in self.players:
-            if player.win_condition(self):
-                # If they're independent, say they won
-                if player.is_independent:
-                    await self.chat.send(f"Game over, {player} has won!")
-                # If they're Citizens, say the Citizens won
-                if player.is_citizen:
-                    await self.chat.send("Game over, Citizens have won!")
-                # If they're Mafia, say the Mafia won
-                if player.is_mafia:
-                    await self.chat.send("Game over, Mafia has won!")
+            if not player.win_is_multi and player.win_condition(self):
                 return True
 
         return False
+
+    def get_winners(self) -> typing.List[Player]:
+        """Returns all winners of this game"""
+        return [p for p in self.players if p.win_condition(self)]
 
     async def choose_godfather(self):
         godfather = self._rand.choice(
@@ -248,9 +245,6 @@ class MafiaGame:
             # If mafia let them see mafia
             if player.is_mafia:
                 channels_needed["mafia_chat"][player.member] = user_overwrites
-            # If jailor, let them see jail
-            if player.is_jailor:
-                channels_needed["jail"][player.member] = user_overwrites
             # Let everyone see the chat and info
             channels_needed["chat"][player.member] = user_overwrites
             channels_needed["info"][player.member] = user_overwrites
@@ -268,6 +262,12 @@ class MafiaGame:
                     player, overwrites=overwrite
                 )
                 setattr(self, player, current_channel)
+                # Create the webhook we'll use for this
+                if player == "jail":
+                    b = await self.ctx.bot.user.avatar_url.read()
+                    self.jail_webhook = await current_channel.create_webhook(
+                        "Jailor", avatar=b
+                    )
             # All personal channels
             else:
                 channel = player.member.display_name.lower()
@@ -522,15 +522,15 @@ class MafiaGame:
         """Performs one cycle of day/night"""
         # Do day tasks and check for winner
         await self.pre_day()
-        if await self.check_winner():
+        if self.check_winner():
             return True
         await self.day_tasks()
-        if await self.check_winner():
+        if self.check_winner():
             return True
         self._day += 1
         # Do night tasks and check for winner
         await self.night_tasks()
-        if await self.check_winner():
+        if self.check_winner():
             return True
 
         # Schedule all the post night tasks
@@ -559,6 +559,12 @@ class MafiaGame:
             if player.dead:
                 await self.chat.set_permissions(player.member, read_messages=True)
 
+        # Send winners
+        winners = self.get_winners()
+        msg = "Winners are:\n{}".format(
+            "\n".join(f"{winner.member.name} ({winner})" for winner in winners)
+        )
+        await self.chat.send(msg)
         # Send a message with everyone's roles
         msg = "\n".join(
             f"{player.member.mention} ({player})" for player in self.players
@@ -661,17 +667,24 @@ class MafiaGame:
                                 "{player} was saved last night from your attack!"
                             )
                     else:
-                        # Notify of their killer's role
-                        notifs.append(
-                            f"- {player.member.mention} ({player}) was killed by {killer}"
-                        )
-                        await self.chat.send(
-                            f"- {player.member.mention} ({player}) was killed during the night!"
-                        )
+                        # If they were cleaned, let the cleaner know their role
+                        if cleaner := player.cleaned_by:
+                            await cleaner.channel.send(
+                                f"You cleaned {player.member.name} up, their role was {player}"
+                            )
+                        # Only notify if the body wasn't cleaned
+                        else:
+                            notifs.append(
+                                f"- {player.member.mention} ({player}) was killed by {killer}"
+                            )
+                            await self.chat.send(
+                                f"- {player.member.mention} ({player}) was killed during the night!"
+                            )
+                            # Just to check if someone was killed
+                            killed.append(player)
+
                         player.dead = True
                         await player.member.remove_roles(self._alive_game_role)
-                        # Just to check if someone was killed
-                        killed.append(player)
                         # This will permanently disable them from talking
                         await self.chat.set_permissions(
                             player.member, read_messages=True, send_messages=False

@@ -1,3 +1,4 @@
 **/__pycache__
 env
 config.py
+extensions/guilds.py
