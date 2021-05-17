@@ -473,7 +473,7 @@ class MafiaGame:
             )
 
         # Config is already set
-        if self.self._preconfigured_config:
+        if self._preconfigured_config:
             # Convert hex to the stuff we care about
             (
                 amount_of_mafia,
@@ -484,7 +484,7 @@ class MafiaGame:
                 self._preconfigured_config, ctx.bot.__special_roles__
             )
             # The only setup we need to do is get the players who will player
-            game_players = await self._setup_players(min_players, max_players)
+            self._members = await self._setup_players(min_players, max_players)
             # Set the config
             self._config = ctx.bot.MafiaGameConfig(amount_of_mafia, special_roles, ctx)
         else:
