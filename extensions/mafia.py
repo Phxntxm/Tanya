@@ -142,12 +142,17 @@ class Mafia(commands.Cog):
 
     @mafia_start.error
     async def clean_mafia_games(self, ctx, error):
+        if isinstance(
+            error, (commands.MaxConcurrencyReached, commands.CommandOnCooldown)
+        ):
+            return
+
         game = self.games.get(ctx.guild.id)
         if game is not None:
             await ctx.send("Encountered an error, cleaning up channels...")
-            del self.games[ctx.guild.id]
             task, game = game
             task.cancel()
+            del self.games[ctx.guild.id]
             await game.cleanup_channels()
 
 
