@@ -100,7 +100,7 @@ class MafiaGame:
     @property
     def godfather(self) -> players.Mafia:
         for player in self.players:
-            if player.is_godfather:
+            if player.is_godfather and not player.dead:
                 return player
 
     async def night_notification(self):
@@ -609,7 +609,7 @@ class MafiaGame:
                     player.protected_by
                     and player.protected_by.defense_type > godfather.attack_type
                 ):
-                    await self.mafia_chat(
+                    await self.mafia_chat.send(
                         "That target has been protected for the night! Your attack failed!"
                     )
                 else:
