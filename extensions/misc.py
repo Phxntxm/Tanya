@@ -10,7 +10,10 @@ class Miscellaneous(commands.Cog):
         """Provides useful information for using this bot"""
         embed = discord.Embed(
             title="Information",
-            description="Welcome to Tanya Degurechaff, a customizable bot for Mafia type games. This bot emulates the mafia style game, similar to Town of Salem but *does* take some liberties to change some things.\n\nIn order to start a game, simpy use >>mafia start. If you want to see some information on the roles available, run `>>mafia roles`. If you want to see information on a specific role run `>>mafia role Doctor` for example.",
+            description="Welcome to Tanya Degurechaff, a customizable bot for Mafia type games. "
+            "This bot emulates the mafia style game, similar to Town of Salem but *does* take some liberties to change some things."
+            "\n\nIn order to start a game, simpy use `>>mafia start`. If you want to see some information on the roles available, "
+            "run `>>mafia roles`. If you want to see information on a specific role run `>>mafia role Doctor` for example.",
             color=0xFF0000,
             timestamp=datetime.utcnow(),
         )
@@ -30,6 +33,7 @@ class Miscellaneous(commands.Cog):
         perms.manage_roles = True
         perms.manage_channels = True
         perms.manage_messages = True
+        perms.mention_everyone = True
         app_info = await ctx.bot.application_info()
         await ctx.send(
             "Use this URL to add me to a server that you'd like!\n<{}>".format(
