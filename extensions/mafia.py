@@ -43,9 +43,7 @@ class RolesSource(menus.ListPageSource):
                 if len(role.description) <= 50
                 else role.description[:50] + "..."
             )
-            embed.add_field(
-                name=role.__class__.__name__, value=description, inline=False
-            )
+            embed.add_field(name=role.__name__, value=description, inline=False)
 
         embed.set_footer(text=f"Page {menu.current_page + 1}/{self._max_pages}")
         return embed
