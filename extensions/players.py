@@ -191,7 +191,7 @@ class Doctor(Citizen):
         # Get everyone alive that isn't ourselves
         msg = "Please provide the name of one player you would like to save from being killed tonight"
         player = await self.wait_for_player(game, msg)
-        player.save()
+        player.protect(self)
         await self.channel.send("\N{THUMBS UP SIGN}")
 
 
@@ -369,7 +369,7 @@ class Survivor(Independent):
         )
         await msg.add_reaction("\N{THUMBS UP SIGN}")
 
-        def check(p):
+        def check(p, _):
             return (
                 p.message_id == msg.id
                 and p.user_id == self.member.id

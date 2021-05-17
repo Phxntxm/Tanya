@@ -334,7 +334,7 @@ class MafiaGame:
     async def _setup_players(
         self, min_players: int, max_players: int
     ) -> typing.List[players.Player]:
-        wait_length_for_players_to_join = 10
+        wait_length_for_players_to_join = 60
         ctx = self.ctx
         game_players = set()
 
