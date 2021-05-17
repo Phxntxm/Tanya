@@ -27,6 +27,13 @@ default_role_disabled_overwrites = discord.PermissionOverwrite(
     attach_files=False,
     add_reactions=False,
 )
+jail_overwrites = discord.PermissionOverwrite(
+    read_messages=False,
+    send_messages=False,
+    read_message_history=False,
+    attach_files=False,
+    add_reactions=False,
+)
 bot_overwrites = discord.PermissionOverwrite(
     read_messages=True,
     send_messages=True,
@@ -235,7 +242,7 @@ class MafiaGame:
         ] = default_role_overwrites
         channels_needed["dead_chat"][self.ctx.guild.me] = bot_overwrites
         # Jail
-        channels_needed["jail"][self.ctx.guild.default_role] = default_role_overwrites
+        channels_needed["jail"][self.ctx.guild.default_role] = jail_overwrites
         channels_needed["jail"][self.ctx.guild.me] = bot_overwrites
         for player in self.players:
             # If mafia let them see mafia

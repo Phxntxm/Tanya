@@ -291,7 +291,7 @@ class PI(Citizen):
 class Lookout(Citizen):
     id = 5
     watching: Player = None
-    short_description = "Watch someone each not to see who visits them"
+    short_description = "Watch someone each night to see who visits them"
     description = (
         "Your job is to watch carefully, every night you can watch one person "
         "and will see who has visited them"
@@ -384,7 +384,7 @@ class Survivor(Independent):
 class Jester(Independent):
     id = 151
     limit = 1
-    short_description = "Get lynched by the time"
+    short_description = "Your goal is to be killed by the town"
     description = "Your win condition is getting lynched or killed by the innocent"
 
     def win_condition(self, game):
@@ -397,7 +397,7 @@ class Executioner(Independent):
     id = 152
     limit = 1
     target = None
-    short_description = "Get your target lynched"
+    short_description = "Your goal is to get your target lynched"
     description = (
         "Your win condition is getting a certain player lynched. If they "
         "die without getting lynched, you become a Jester. Your goal is to then get "
@@ -423,13 +423,20 @@ class Executioner(Independent):
 class Arsonist(Independent):
     id = 153
     attack_type = AttackType.unstoppable
+    defense_type = DefenseType.basic
     short_description = "Burn them all"
     description = (
         "Your job is simple, douse everyone in fuel and ignite them. You "
         "win if everyone has been ignited and you are the last person left"
     )
 
+    def __init__(self, discord_member: discord.Member):
+        super().__init__(discord_member)
+
     async def night_task(self, game: MafiaGame):
+        # We have permanent basic defense, according to ToS
+        self.protected_by = self
+
         doused = [p for p in game.players if p.doused and not p.dead]
         doused_msg = "\n".join(p.member.name for p in doused)
         undoused = [p.member.name for p in game.players if not p.doused and not p.dead]
