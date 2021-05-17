@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime
 
 import discord
@@ -50,6 +51,28 @@ class Miscellaneous(commands.Cog):
     async def prefix(self, ctx):
         """Sends the bot prefix"""
         await ctx.send("My prefix is >>")
+
+    @commands.command(aliases="botinfo")
+    async def info(self, ctx):
+        """Sends some information about this bot"""
+        description = f"""
+Python version: {sys.version_info.major}.{sys.version_info.minor}{sys.version_info.micro}
+Discord version: {discord.__version__}
+Games playing: {len(ctx.bot.get_cog("Mafia").games)}
+Custom roles implemented: {len(ctx.bot.__special_roles__)}
+"""
+        embed = discord.Embed(
+            title=ctx.bot.user.name,
+            description=description,
+            color=0xFF0000,
+            timestamp=datetime.utcnow(),
+        )
+        embed.set_author(
+            name="Dev Server",
+            url="https://discord.gg/B6qJ4NKGvp",
+            icon_url=ctx.bot.user.avatar_url,
+        )
+        await ctx.send(embed=embed)
 
 
 def setup(bot):

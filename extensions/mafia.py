@@ -115,7 +115,6 @@ class Mafia(commands.Cog):
             await game.cleanup_channels()
 
     @mafia.command(name="roles")
-    @commands.guild_only()
     async def mafia_roles(self, ctx):
         """Displays the available custom roles"""
         menu = menus.MenuPages(
@@ -124,7 +123,6 @@ class Mafia(commands.Cog):
         await menu.start(ctx)
 
     @mafia.command(name="role")
-    @commands.guild_only()
     async def mafia_role(self, ctx, role: Player):
         """Displays the information for the provided role"""
         embed = discord.Embed(
@@ -140,6 +138,11 @@ class Mafia(commands.Cog):
         )
         await ctx.send(embed=embed)
 
+    @mafia.command(name="rules", aliases=["tutorial", "guide"])
+    async def mafia_rules(self, ctx):
+        """Displays the rules for this game of mafia"""
+        await self.guide(ctx)
+
     @mafia_start.error
     async def clean_mafia_games(self, ctx, error):
         if isinstance(
@@ -154,6 +157,37 @@ class Mafia(commands.Cog):
             task.cancel()
             del self.games[ctx.guild.id]
             await game.cleanup_channels()
+
+    @commands.command(aliases=["tutorial"])
+    async def guide(self, ctx):
+        """Displays the rules for this game of mafia"""
+        desc = """
+The rules of mafia are prety straight forward:
+- There are day and night cycles
+- During the day Citizens try to figure out who the Mafia is, and lynch them
+- During the night Mafia kill one player
+- Citizens win if all Mafia are dead
+- Mafia win if a majority of the town ar Mafia
+- Independent roles each have their own separate win condition, this will be described in your private chat
+
+Main chats during the game:
+- chat: The main chat, this is where you'll talk during the day to figure out your information
+- mafia-chat: The chat for the mafia, this is where Mafia will talk during the night and where the Godfather will choose who dies
+- dead-chat: The chat anyone who is dead can talk in
+- your-name: This is your private chat, the role you have will be explained here. If you have special tasks to complete, they'll be handled here
+        """
+        embed = discord.Embed(
+            title="Mafia rules",
+            description=desc,
+            color=0xFF0000,
+            timestamp=datetime.utcnow(),
+        )
+        embed.set_author(
+            name="Dev Server",
+            url="https://discord.gg/B6qJ4NKGvp",
+            icon_url=ctx.bot.user.avatar_url,
+        )
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
