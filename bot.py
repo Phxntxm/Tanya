@@ -25,7 +25,7 @@ bot = Bot(
     command_prefix=commands.when_mentioned_or(">>"),
     intents=intents,
     owner_ids=[115997555619266561, 204306127838642176],
-    help_command=commands.HelpCommand(
+    help_command=commands.DefaultHelpCommand(
         command_attrs={"name": "commands", "aliases": ["command"]}
     ),
 )
