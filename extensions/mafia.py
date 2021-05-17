@@ -132,7 +132,7 @@ class Mafia(commands.Cog):
 
     @mafia.command(name="role")
     @commands.guild_only()
-    async def mafia_role(self, ctx, role: Player):
+    async def mafia_role(self, ctx, role):
         """Displays the information for the provided role"""
         embed = discord.Embed(
             title="Roles",
