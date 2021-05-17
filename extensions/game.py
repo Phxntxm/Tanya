@@ -609,7 +609,7 @@ class MafiaGame:
                 # They were protected during the day
                 if (
                     player.protected_by
-                    and player.protected_by.defense_type > godfather.attack_type
+                    and player.protected_by.defense_type >= godfather.attack_type
                 ):
                     await self.mafia_chat.send(
                         "That target has been protected for the night! Your attack failed!"
