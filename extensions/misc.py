@@ -56,10 +56,11 @@ class Miscellaneous(commands.Cog):
     async def info(self, ctx):
         """Sends some information about this bot"""
         description = f"""
-Python version: {sys.version_info.major}.{sys.version_info.minor}{sys.version_info.micro}
+Python version: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}
 Discord version: {discord.__version__}
 Games playing: {len(ctx.bot.get_cog("Mafia").games)}
 Custom roles implemented: {len(ctx.bot.__special_roles__)}
+Guilds: {len(ctx.bot.guilds)}
 """
         embed = discord.Embed(
             title=ctx.bot.user.name,
