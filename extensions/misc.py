@@ -52,7 +52,7 @@ class Miscellaneous(commands.Cog):
         """Sends the bot prefix"""
         await ctx.send("My prefix is >>")
 
-    @commands.command(aliases="botinfo")
+    @commands.command(aliases=["botinfo"])
     async def info(self, ctx):
         """Sends some information about this bot"""
         description = f"""
