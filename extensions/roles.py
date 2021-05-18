@@ -213,7 +213,7 @@ class Jailor(Citizen):
                     else:
                         game.ctx.create_task(game.jail_webhook.send(m.content))
                 # If the jailed is the one talking in the jail channel
-                elif m.channel == game.jail and m.author == self.target:
+                elif m.channel == game.jail and m.author == self.target.member:
                     game.ctx.create_task(
                         player.channel.send(f"{self.target.member.name}: {m.content}")
                     )
