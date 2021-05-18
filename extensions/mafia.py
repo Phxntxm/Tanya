@@ -49,6 +49,7 @@ class Mafia(commands.Cog):
     games = {}
     # Useful for restarting a game, or getting info on the last game
     previous_games = {}
+    errored_games = {}
 
     @commands.group(invoke_without_command=True)
     async def mafia(self, ctx):
@@ -160,6 +161,8 @@ class Mafia(commands.Cog):
             task.cancel()
             del self.games[ctx.guild.id]
             await game.cleanup_channels()
+
+            self.errored_games[ctx.guild.id] = game
 
     @commands.command(aliases=["tutorial"])
     async def guide(self, ctx):
