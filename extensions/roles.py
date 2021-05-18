@@ -140,8 +140,8 @@ class Sheriff(Citizen):
         "If they are mafia, they will die... however if they are a citizen, you die instead"
     )
     can_kill_mafia_at_night = True
-    attack_message = "{killed} has been shot by the sherrif!"
-    suicide_message = "{killed} regretted what they've done, and shot themselves"
+    attack_message = "{killed.member.name} ({killed}) has been shot by the sherrif!"
+    suicide_message = "{killed.member.name} ({killed}) regretted what they've done, and shot themselves"
 
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive that isn't ourselves
@@ -175,6 +175,7 @@ class Jailor(Citizen):
         "to the jail, allowing you to converse with them without revealing your identity\n\n"
         "**You only have 3 jails total, use them wisely**"
     )
+    attack_message = "{killed.member.name} ({killed}) has been executed by the Jailor!"
 
     async def day_task(self, game: MafiaGame, player: Player):
         if self.jails <= 0:
@@ -310,7 +311,7 @@ class Mafia(Role):
         "Your win condition is to have majority of townsfolk be mafia. "
         "During the night you and your mafia buddies must agree upon 1 person to kill that night"
     )
-    attack_message = "{killed} has been killed by the mafia!"
+    attack_message = "{killed.member.name} ({killed}) has been killed by the mafia!"
 
     def win_condition(self, game: MafiaGame, player: Player):
         if game.is_day:
@@ -460,7 +461,9 @@ class Arsonist(Independent):
         "Your job is simple, douse everyone in fuel and ignite them. You "
         "win if everyone has been ignited and you are the last person left"
     )
-    attack_message = "{killed} has been set ablaze by the Arsonist!"
+    attack_message = (
+        "{killed.member.name} ({killed}) has been set ablaze by the Arsonist!"
+    )
 
     async def night_task(self, game: MafiaGame, player: Player):
         # We have permanent basic defense, according to ToS
