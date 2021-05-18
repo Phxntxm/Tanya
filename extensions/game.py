@@ -171,7 +171,7 @@ class MafiaGame:
                 p
                 for p in self.players
                 # We don't want to choose special mafia
-                if p.is_mafia and p.__class__ == self.ctx.bot.role_mapping.get("Mafia")
+                if p.is_mafia and p is self.ctx.bot.role_mapping.get("Mafia")
             ]
         )
         godfather.is_godfather = True
