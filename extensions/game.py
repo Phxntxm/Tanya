@@ -527,21 +527,6 @@ class MafiaGame:
             self.ctx.guild.default_role, overwrite=default_role_overwrites
         )
 
-    async def lock_category(self):
-        overwrites = {
-            self.ctx.guild.me: bot_overwrites,
-            self.ctx.guild.default_role: default_role_overwrites,
-        }
-        await self.category.edit(overwrites=overwrites)
-
-    async def unlock_category(self):
-        overwrites = {
-            self.ctx.guild.me: bot_overwrites,
-            self.ctx.guild.default_role: default_role_overwrites,
-        }
-        overwrites[self.ctx.guild.default_role].update(read_messages=True)
-        await self.category.edit(overwrites=overwrites)
-
     async def play(self):
         """Handles the preparation and the playing of the game"""
         await self._setup_config()
@@ -610,8 +595,6 @@ class MafiaGame:
         await self.pick_players()
         # Setup the category required
         category = await self._setup_category()
-        # Make sure it's unlocked
-        await self.unlock_category()
         # And setup the channels in it
         await self._setup_channels(category)
         # Now choose the godfather
@@ -919,8 +902,6 @@ class MafiaGame:
             await self._prune_category_channels(category)
             # Then make sure the category channels are setup as they should be
             await self._setup_category_channels(category)
-            # Lock category channel as well
-            await self.lock_category()
 
             # Now purge the channels
             await asyncio.wait(
