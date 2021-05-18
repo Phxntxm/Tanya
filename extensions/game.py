@@ -41,8 +41,8 @@ class MafiaGameConfig:
     starting_mafia: int
     special_roles: typing.List[players.Player]
     ctx: commands.Context
-    night_length: int = 45
-    day_length: int = 90
+    night_length: int = 90
+    day_length: int = 120
 
 
 class MafiaGame:
