@@ -404,7 +404,7 @@ class MafiaGame:
                     # We want to start timeout if we've reached min players, but haven't
                     # already started it
                     start_timeout = (
-                        len(game_players) == min_players and timer_not_started
+                        len(game_players) >= min_players and timer_not_started
                     )
                     if start_timeout:
                         timer_not_started = False
@@ -414,7 +414,7 @@ class MafiaGame:
                         text=f"{len(game_players)}/{min_players} Needed to join"
                     )
                     await msg.edit(embed=embed)
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(2)
 
             def check(p):
                 # First don't accept any reactions that aren't actually people joining/leaving
