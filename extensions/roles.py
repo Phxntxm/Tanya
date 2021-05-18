@@ -85,7 +85,7 @@ class Role(abc.ABC):
     def win_condition(self, game: MafiaGame) -> bool:
         raise NotImplementedError()
 
-    def startup_channel_message(self, game: MafiaGame) -> str:
+    def startup_channel_message(self, game: MafiaGame, player: Player) -> str:
         return f"Your role is {self}\n{self.description}."
 
     def __str__(self) -> str:
@@ -421,11 +421,11 @@ class Executioner(Independent):
         "lynched yourself"
     )
 
-    def startup_channel_message(self, game: MafiaGame):
+    def startup_channel_message(self, game: MafiaGame, player: Player):
         self.target = random.choice([p for p in game.players if p.is_citizen])
-        self.target.executionor_target = self.player
+        self.target.executionor_target = player
         self.description += f". Your target is {self.target.member.mention}"
-        return super().startup_channel_message(game)
+        return super().startup_channel_message(game, player)
 
     def win_condition(self, game: MafiaGame):
         return (
