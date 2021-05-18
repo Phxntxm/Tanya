@@ -117,9 +117,12 @@ class Mafia(commands.Cog):
     @mafia.command(name="roles")
     async def mafia_roles(self, ctx):
         """Displays the available custom roles"""
-        menu = menus.MenuPages(
-            source=RolesSource(ctx.bot.__special_roles__), clear_reactions_after=True
-        )
+        roles = [
+            role
+            for name, role in ctx.bot.roles_mapping.items()
+            if name not in ("Mafia", "Citizens")
+        ]
+        menu = menus.MenuPages(source=RolesSource(roles), clear_reactions_after=True)
         await menu.start(ctx)
 
     @mafia.command(name="role")

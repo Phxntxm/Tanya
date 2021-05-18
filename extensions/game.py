@@ -116,12 +116,6 @@ class MafiaGame:
         )
         await self.info.send(content=self._alive_game_role.mention, embed=embed)
 
-    def add_day_notification(self, *notifications: str):
-        msg, current_notifications = self._day_notifications.get(self._day, (None, []))
-        current_notifications.extend(notifications)
-
-        self._day_notifications[self._day] = (msg, current_notifications)
-
     async def day_notification(self, *notifications: str):
         """Creates a notification embed with all of todays notifications"""
         msg, current_notifications = self._day_notifications.get(self._day, (None, []))
@@ -159,16 +153,6 @@ class MafiaGame:
 
         self._day_notifications[self._day] = (msg, current_notifications)
 
-    async def update_role_list(self):
-        msg = "\n".join(
-            f"**{'Town' if role.is_citizen else 'Mafia'}** - {role}"
-            for role in self.players
-        )
-        if self._role_list is None:
-            self._role_list = await self.info.send(msg)
-        else:
-            await self._role_list.edit(content=msg)
-
     def check_winner(self) -> bool:
         """Loops through all the winners and checks their win conditions"""
         for player in self.players:
@@ -187,7 +171,7 @@ class MafiaGame:
                 p
                 for p in self.players
                 # We don't want to choose special mafia
-                if p.is_mafia and p.__class__ not in self.ctx.bot.__special_mafia__
+                if p.is_mafia and p.__class__ == self.ctx.bot.role_mapping.get("Mafia")
             ]
         )
         godfather.is_godfather = True
@@ -195,6 +179,10 @@ class MafiaGame:
         await godfather.channel.send("You are the godfather!")
 
     async def pick_players(self):
+        player_cls = self.ctx.bot.mafia_player
+        mafia_cls = self.ctx.bot.role_mapping["Mafia"]
+        citizen_cls = self.ctx.bot.role_mapping["Citizen"]
+
         # I'm paranoid
         for i in range(5):
             self._rand.shuffle(self._members)
@@ -202,15 +190,15 @@ class MafiaGame:
         for role in self._config.special_roles:
             # Get member that will have this role
             member = self._members.pop()
-            self.players.append(role(member))
+            self.players.append(player_cls(member, self.ctx, role(member)))
         # Then get the remaining normal mafia needed
         for i in range(self._config.starting_mafia - self.total_mafia):
             member = self._members.pop()
-            self.players.append(self.ctx.bot.mafia_role(member))
+            self.players.append(player_cls(member, self.ctx, mafia_cls(member)))
         # The rest are citizens
         while self._members:
             member = self._members.pop()
-            self.players.append(self.ctx.bot.citizen_role(member))
+            self.players.append(player_cls(member, self.ctx, citizen_cls(member)))
 
     async def setup_channels(self):
         # Get category, create if it doesn't exist yet
@@ -393,7 +381,10 @@ class MafiaGame:
                         return True
                 # Only allow people to leave if we haven't hit the min
                 if p.event_type == "REACTION_REMOVE":
-                    game_players.remove(p.user_id)
+                    try:
+                        game_players.remove(p.user_id)
+                    except KeyError:
+                        pass
                 ctx.create_task(
                     update_embed(
                         start_timeout=len(game_players) == min_players
@@ -464,7 +455,11 @@ class MafiaGame:
         self, players: int, mafia: int
     ) -> typing.List[typing.Tuple(players.Player, int)]:
         ctx = self.ctx
-        amount_of_specials = [(k, 0) for k in ctx.bot.__special_roles__]
+        amount_of_specials = [
+            (v, 0)
+            for k, v in ctx.bot.role_mapping.items()
+            if k not in ["Mafia", "Citizen"]
+        ]
         menu = ctx.bot.MafiaMenu(source=ctx.bot.MafiaPages(amount_of_specials, ctx))
 
         menu.amount_of_players = players
@@ -494,7 +489,13 @@ class MafiaGame:
                 max_players,
                 special_roles,
             ) = ctx.bot.hex_to_players(
-                self._preconfigured_config, ctx.bot.__special_roles__
+                self._preconfigured_config,
+                # A list of only the special roles
+                (
+                    v
+                    for k, v in ctx.bot.role_mapping.items()
+                    if k not in ["Mafia", "Citizen"]
+                ),
             )
             # The only setup we need to do is get the players who will player
             self._members = await self._setup_players(min_players, max_players)
@@ -710,6 +711,14 @@ class MafiaGame:
                         if player.is_godfather:
                             await self.choose_godfather()
                             player.is_godfather = False
+                        # If they had an executionor targetting them, they become a jester
+                        if (
+                            player.executionor_target
+                            and not player.executionor_target.dead
+                        ):
+                            player.executionor_target.role = self.ctx.bot.role_mapping[
+                                "Jester"
+                            ](player)
 
             if not killed:
                 notifs.append("- No one was killed last night!")
