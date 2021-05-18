@@ -17,20 +17,13 @@ if typing.TYPE_CHECKING:
 default_role_overwrites = discord.PermissionOverwrite(
     read_messages=False,
     send_messages=True,
-    read_message_history=True,
+    read_message_history=False,
     attach_files=False,
     add_reactions=False,
 )
 default_role_disabled_overwrites = discord.PermissionOverwrite(
     read_messages=False,
     send_messages=False,
-    read_message_history=True,
-    attach_files=False,
-    add_reactions=False,
-)
-jail_overwrites = discord.PermissionOverwrite(
-    read_messages=False,
-    send_messages=True,
     read_message_history=False,
     attach_files=False,
     add_reactions=False,
@@ -907,6 +900,7 @@ class MafiaGame:
             await self._prune_category_channels(category)
             # Then make sure the category channels are setup as they should be
             await self._setup_category_channels(category)
+            del self.ctx.bot.claimed_categories[self.category.id]
 
 
 def setup(bot):
