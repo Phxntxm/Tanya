@@ -189,16 +189,13 @@ class Player:
             )
 
     async def day_task(self, game: MafiaGame):
-        if msg := self.role.day_task(game, self):
-            await self.channel.send(msg)
+        await self.role.day_task(game, self)
 
     async def night_task(self, game: MafiaGame):
-        if msg := self.role.night_task(game, self):
-            await self.channel.send(msg)
+        await self.role.night_task(game, self)
 
     async def post_night_task(self, game: MafiaGame):
-        if msg := self.role.post_night_task(game, self):
-            await self.channel.send(msg)
+        await self.role.post_night_task(game, self)
 
 
 def setup(bot):
