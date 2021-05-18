@@ -527,6 +527,21 @@ class MafiaGame:
             self.ctx.guild.default_role, overwrite=default_role_overwrites
         )
 
+    async def lock_category(self):
+        overwrites = {
+            self.ctx.guild.me: bot_overwrites,
+            self.ctx.guild.default_role: default_role_overwrites,
+        }
+        await self.category.edit(overwrites=overwrites)
+
+    async def unlock_category(self):
+        overwrites = {
+            self.ctx.guild.me: bot_overwrites,
+            self.ctx.guild.default_role: default_role_overwrites,
+        }
+        overwrites[self.ctx.guild.default_role].update(read_messages=True)
+        await self.category.edit(overwrites=overwrites)
+
     async def play(self):
         """Handles the preparation and the playing of the game"""
         await self._setup_config()
@@ -593,13 +608,17 @@ class MafiaGame:
     async def _game_preparation(self):
         # Sort out the players
         await self.pick_players()
-        # Setup the categories and channels
+        # Setup the category required
         category = await self._setup_category()
+        # Make sure it's unlocked
+        await self.unlock_category()
+        # And setup the channels in it
         await self._setup_channels(category)
         # Now choose the godfather
         await self.choose_godfather()
         # Mafia channel must be locked
         await self.lock_mafia_channel()
+        # Now that everything is done unlock the channel
 
     async def _cycle(self) -> bool:
         """Performs one cycle of day/night"""
@@ -900,8 +919,22 @@ class MafiaGame:
             await self._prune_category_channels(category)
             # Then make sure the category channels are setup as they should be
             await self._setup_category_channels(category)
+            # Lock category channel as well
+            await self.lock_category()
+
+            # Now purge the channels
+            await asyncio.wait(
+                [
+                    self.info.purge(limit=None),
+                    self.dead_chat.purge(limit=None),
+                    self.jail.purge(limit=None),
+                    self.chat.purge(limit=None),
+                    self.mafia_chat.purge(limit=None),
+                ],
+                return_when=asyncio.ALL_COMPLETED,
+            )
+            # Done with cleanup, remove our claim
             del self.ctx.bot.claimed_categories[self.category.id]
-            self.category = None
 
 
 def setup(bot):
