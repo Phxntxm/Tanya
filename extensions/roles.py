@@ -319,7 +319,7 @@ class Janitor(Mafia):
     short_description = "Clean up any mess left by other mafia members"
 
     async def night_task(self, game: MafiaGame, player: Player):
-        if self.cleans <= 3:
+        if self.cleans <= 0:
             return
 
         msg = "Provide the player you want to clean tonight"
