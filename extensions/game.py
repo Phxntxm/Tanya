@@ -271,7 +271,7 @@ class MafiaGame:
                 if player == "jail":
                     b = await self.ctx.bot.user.avatar_url.read()
                     self.jail_webhook = await current_channel.create_webhook(
-                        "Jailor", avatar=b
+                        name="Jailor", avatar=b
                     )
             # All personal channels
             else:
