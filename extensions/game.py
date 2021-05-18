@@ -114,7 +114,7 @@ class MafiaGame:
         embed.set_thumbnail(
             url="https://www.jing.fm/clipimg/full/132-1327252_half-moon-png-images-moon-clipart-png.png"
         )
-        await self.info.send(content=self._alive_game_role.mention, embed=embed)
+        await self.chat.send(content=self._alive_game_role.mention, embed=embed)
 
     async def day_notification(self, *notifications: str):
         """Creates a notification embed with all of todays notifications"""
