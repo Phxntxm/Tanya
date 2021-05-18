@@ -39,6 +39,8 @@ class Player:
         self.member = discord_member
         self.ctx = ctx
         self.role = role
+        # I hate this but it *needs* the player...
+        role.player = self
 
     def __str__(self) -> str:
         return str(self.role)
@@ -139,7 +141,7 @@ class Player:
     async def convert(cls, ctx: commands.Context, arg: str) -> Player:
         for name, role in ctx.bot.role_mapping.items():
             if name not in ("Mafia", "Citizen") and name == arg:
-                return cls(ctx.author, ctx, role(ctx.author))
+                return cls(ctx.author, ctx, role())
 
         raise commands.BadArgument(f"Could not find a role named {arg}")
 

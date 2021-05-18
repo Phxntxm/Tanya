@@ -190,15 +190,15 @@ class MafiaGame:
         for role in self._config.special_roles:
             # Get member that will have this role
             member = self._members.pop()
-            self.players.append(player_cls(member, self.ctx, role(member)))
+            self.players.append(player_cls(member, self.ctx, role()))
         # Then get the remaining normal mafia needed
         for i in range(self._config.starting_mafia - self.total_mafia):
             member = self._members.pop()
-            self.players.append(player_cls(member, self.ctx, mafia_cls(member)))
+            self.players.append(player_cls(member, self.ctx, mafia_cls()))
         # The rest are citizens
         while self._members:
             member = self._members.pop()
-            self.players.append(player_cls(member, self.ctx, citizen_cls(member)))
+            self.players.append(player_cls(member, self.ctx, citizen_cls()))
 
     async def setup_channels(self):
         # Get category, create if it doesn't exist yet
