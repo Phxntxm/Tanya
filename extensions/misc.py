@@ -35,6 +35,7 @@ class Miscellaneous(commands.Cog):
         perms.manage_channels = True
         perms.manage_messages = True
         perms.mention_everyone = True
+        perms.manage_webhooks = True
         app_info = await ctx.bot.application_info()
         await ctx.send(
             "Use this URL to add me to a server that you'd like!\n<{}>".format(
