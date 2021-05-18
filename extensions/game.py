@@ -331,6 +331,9 @@ class MafiaGame:
                 await self.mafia_chat.set_permissions(
                     p.member, overwrite=user_overwrites
                 )
+            # Set access for info and chat
+            await self.info.set_permissions(p.member, overwrite=user_overwrites)
+            await self.chat.set_permissions(p.member, overwrite=user_overwrites)
             # Everyone has their own private channel, setup overwrites for them
             overwrites = {
                 self.ctx.guild.default_role: default_role_overwrites,
