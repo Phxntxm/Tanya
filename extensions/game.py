@@ -901,6 +901,7 @@ class MafiaGame:
             # Then make sure the category channels are setup as they should be
             await self._setup_category_channels(category)
             del self.ctx.bot.claimed_categories[self.category.id]
+            self.category = None
 
 
 def setup(bot):
