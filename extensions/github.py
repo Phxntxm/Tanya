@@ -1,6 +1,6 @@
 from aiohttp import web
 import asyncio
-from discord.ext import commands
+from discord.ext import commands, tasks
 import json
 
 
@@ -9,12 +9,25 @@ class Github(commands.Cog):
         self.app = web.Application()
         self.app.add_routes([web.post("/github-push", self.receive_push)])
         self.bot = bot
-        loop = asyncio.get_event_loop()
-        # Why the fuck is this private? I'm using it, idc
-        self.task = loop.create_task(web._run_app(self.app))
+        self.runner = web.AppRunner(app)
+        self.app_runner.start()
+
 
     def cog_unload(self):
-        self.task.cancel()
+        asyncio.create_task(self.stop_runner())
+        self.app_runner.close()
+
+
+    async def stop_runner(self):
+        await self.runner.cleanup()
+
+
+    @tasks.loop(count=1)
+    async def app_runner(self):
+        await self.runner.setup()
+        self.site = web.TCPSite(self.runner, '0.0.0.0', 5000)
+        await self.site.start()
+
 
     async def receive_push(self, request):
         response = await request.json()
