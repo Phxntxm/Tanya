@@ -1,14 +1,13 @@
 from __future__ import annotations
-import asyncio
-from collections import defaultdict
 
-from extensions.players import Mafia
-import discord
-from discord.ext import commands
+import asyncio
 import re
 import traceback
-from fuzzywuzzy import process
 import typing
+
+import discord
+from discord.ext import commands
+from fuzzywuzzy import process
 
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
