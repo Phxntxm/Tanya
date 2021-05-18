@@ -403,7 +403,7 @@ class Jester(Independent):
     description = "Your win condition is getting lynched or killed by the innocent"
 
     def win_condition(self, game: MafiaGame, player: Player):
-        return self.lynched or (
+        return player.lynched or (
             player.dead and player.killed_by and not player.killed_by.is_mafia
         )
 
