@@ -63,6 +63,7 @@ class MafiaGame:
         self.is_day: bool = True
 
         # Different chats needed
+        self.category = discord.CategoryChannel = None
         self.chat: discord.TextChannel = None
         self.info: discord.TextChannel = None
         self.jail: discord.TextChannel = None
@@ -200,109 +201,151 @@ class MafiaGame:
             member = self._members.pop()
             self.players.append(player_cls(member, self.ctx, citizen_cls()))
 
-    async def setup_channels(self):
-        # Get category, create if it doesn't exist yet
-        category = await self.ctx.guild.create_category_channel("MAFIA GAME")
-        channels_needed = collections.defaultdict(dict)
-        # All of these channel overwrites are the same concept:
-        # Everyone role has read_messages disabled, send_messages enabled (will swap based on day/night)
-        # Bot has read_messages enabled, send_messages enabled
-        # The person has read_messages enabled
-        # This allows read messages to be overridden by the person, making sure only they can
-        # see the channel, it will never be touched. We will change send_messages only on the
-        # everyone role, allowing only one update for everyone in a single role.
-        # We cannot use roles for this task, because everyone can see other people's roles
+    async def _claim_category(self) -> typing.Any[discord.CategoryChannel, None]:
+        """Loops through the categories available on the server, returning
+        a category we can lay claim to and use for caching. If it doesn't
+        find one, it will return None
+        """
+        for category in self.ctx.guild.categories:
+            # If this isn't the category name, we don't care
+            if category.name != "MAFIA GAME":
+                continue
+            # If it's been claimed, we don't want this one
+            if category.id in self.ctx.bot.claimed_categories:
+                continue
 
-        # Info channel
-        channels_needed["info"][
-            self.ctx.guild.default_role
-        ] = default_role_disabled_overwrites
-        channels_needed["info"][self.ctx.guild.me] = bot_overwrites
-        # Chat channel
-        channels_needed["chat"][self.ctx.guild.default_role] = default_role_overwrites
-        channels_needed["chat"][self.ctx.guild.me] = bot_overwrites
-        # Mafia channel
-        channels_needed["mafia_chat"][
-            self.ctx.guild.default_role
-        ] = default_role_overwrites
-        channels_needed["mafia_chat"][self.ctx.guild.me] = bot_overwrites
-        # Dead channel
-        channels_needed["dead_chat"][
-            self.ctx.guild.default_role
-        ] = default_role_overwrites
-        channels_needed["dead_chat"][self.ctx.guild.me] = bot_overwrites
-        # Jail
-        channels_needed["jail"][self.ctx.guild.default_role] = jail_overwrites
-        channels_needed["jail"][self.ctx.guild.me] = bot_overwrites
-        for player in self.players:
-            # If mafia let them see mafia
-            if player.is_mafia:
-                channels_needed["mafia_chat"][player.member] = user_overwrites
-            # Let everyone see the chat and info
-            channels_needed["chat"][player.member] = user_overwrites
-            channels_needed["info"][player.member] = user_overwrites
-            # Their player channel
-            channels_needed[player][
-                self.ctx.guild.default_role
-            ] = default_role_overwrites
-            channels_needed[player][player.member] = user_overwrites
-            channels_needed[player][self.ctx.guild.me] = bot_overwrites
-        # Now simply set all channels and overwrites
-        for player, overwrite in channels_needed.items():
-            # Set the special channels
-            if player in ["mafia_chat", "chat", "info", "dead_chat", "jail"]:
-                current_channel = await category.create_text_channel(
-                    player, overwrites=overwrite
+            # Otherwise, if we're here, then it's a good category to claim
+            self.ctx.bot.claimed_categories[category.id] = self
+            return category
+
+    async def _setup_category_channels(self, category: discord.CategoryChannel):
+        # Setup all the overwrites needed
+        info_overwrites = {
+            self.ctx.guild.default_role: default_role_disabled_overwrites,
+            self.ctx.guild.me: bot_overwrites,
+        }
+        chat_overwrites = {
+            self.ctx.guild.default_role: default_role_overwrites,
+            self.ctx.guild.me: bot_overwrites,
+        }
+        dead_overwrites = {
+            self.ctx.guild.default_role: default_role_overwrites,
+            self.ctx.guild.me: bot_overwrites,
+        }
+        mafia_overwrites = {
+            self.ctx.guild.default_role: default_role_overwrites,
+            self.ctx.guild.me: bot_overwrites,
+        }
+        jail_overwrites = {
+            self.ctx.guild.default_role: default_role_overwrites,
+            self.ctx.guild.me: bot_overwrites,
+        }
+
+        # Get each channel, if it exists edit... if not create
+        info = discord.utils.get(category.text_channels, name="info")
+        chat = discord.utils.get(category.text_channels, name="chat")
+        dead = discord.utils.get(category.text_channels, name="dead")
+        mafia = discord.utils.get(category.text_channels, name="mafia")
+        jail = discord.utils.get(category.text_channels, name="jail")
+
+        if info:
+            if info.overwrites != info_overwrites:
+                await info.edit(overwrites=info_overwrites)
+        else:
+            info = await category.create_text_channel(
+                "info", overwrites=info_overwrites
+            )
+        if chat:
+            if chat.overwrites != chat_overwrites:
+                await chat.edit(overwrites=chat_overwrites)
+        else:
+            chat = await category.create_text_channel(
+                "chat", overwrites=chat_overwrites
+            )
+        if dead:
+            if dead.overwrites != dead_overwrites:
+                await dead.edit(overwrites=dead_overwrites)
+        else:
+            dead = await category.create_text_channel(
+                "dead", overwrites=dead_overwrites
+            )
+        if mafia:
+            if mafia.overwrites != mafia_overwrites:
+                await mafia.edit(overwrites=mafia_overwrites)
+        else:
+            mafia = await category.create_text_channel(
+                "mafia", overwrites=mafia_overwrites
+            )
+        if jail:
+            if jail.overwrites != jail_overwrites:
+                await jail.edit(overwrites=jail_overwrites)
+        else:
+            jail = await category.create_text_channel(
+                "jail", overwrites=jail_overwrites
+            )
+        # Jail has a special webhook, check that
+        webhooks = await jail.webhooks()
+        jail_webhook = discord.utils.get(webhooks, name="Jailor")
+        if jail_webhook is None:
+            b = await self.ctx.bot.user.avatar_url.read()
+            jail_webhook = await jail.create_webhook(name="Jailor", avatar=b)
+
+        # Now set each one
+        self.info = info
+        self.chat = chat
+        self.dead_chat = dead
+        self.mafia_chat = mafia
+        self.jail = jail
+        self.jail_webhook
+
+    async def _prune_category_channels(self, category: discord.CategoryChannel):
+        """Removes all the personal channels in the category, leaving just the
+        normal default channels"""
+        for channel in category.text_channels:
+            if channel.name not in ("info", "chat", "dead", "mafia", "jail"):
+                await channel.delete()
+
+    async def _setup_category(self):
+        # Try to claim a category
+        category = await self._claim_category()
+
+        # If there isn't one available to claim, create and claim
+        if category is None:
+            category = await self.ctx.guild.create_category_channel("MAFIA GAME")
+            self.ctx.bot.claimed_categories[category.id] = self
+
+        self.category = category
+        # Make sure the default channels are setup properly
+        await self._setup_category_channels(category)
+        # Then prune all the extra channels
+        await self._prune_category_channels(category)
+
+        return category
+
+    async def _setup_channels(self, category: discord.CategoryChannel):
+        """Receives a category with the default channels already setup, then sets up the
+        rest of the players"""
+        for p in self.players:
+            # Let them see the mafia channel if they're mafia
+            if p.is_mafia:
+                await self.mafia_chat.set_permissions(
+                    p.member, overwrite=user_overwrites
                 )
-                setattr(self, player, current_channel)
-                # Create the webhook we'll use for this
-                if player == "jail":
-                    b = await self.ctx.bot.user.avatar_url.read()
-                    self.jail_webhook = await current_channel.create_webhook(
-                        name="Jailor", avatar=b
-                    )
-            # All personal channels
-            else:
-                channel = player.member.display_name.lower()
-                current_channel = await category.create_text_channel(
-                    channel,
-                    overwrites=overwrite,
-                    topic=f"Your role is {player}",
-                )
-                player.set_channel(current_channel)
-                msg = await current_channel.send(
-                    player.role.startup_channel_message(self, player)
-                )
-                await msg.pin()
-
-    async def lock_chat_channel(self):
-        await self.chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=default_role_disabled_overwrites
-        )
-
-    async def unlock_chat_channel(self):
-        await self.chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=default_role_overwrites
-        )
-
-    async def lock_mafia_channel(self):
-        await self.mafia_chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=default_role_disabled_overwrites
-        )
-
-    async def unlock_mafia_channel(self):
-        await self.mafia_chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=default_role_overwrites
-        )
-
-    async def play(self):
-        """Handles the preparation and the playing of the game"""
-        await self._prepare()
-        await self._start()
-
-    async def redo(self):
-        await self.cleanup_channels()
-        await self._start()
+            # Everyone has their own private channel, setup overwrites for them
+            overwrites = {
+                self.ctx.guild.default_role: default_role_overwrites,
+                self.ctx.guild.me: bot_overwrites,
+                p.member: user_overwrites,
+            }
+            # Create their channel
+            channel = await category.create_text_channel(
+                p.member.name, overwrites=overwrites
+            )
+            # Set it on the player object
+            p.set_channel(channel)
+            # Send them their startup message and pin it
+            msg = await channel.send(p.role.startup_channel_message(self, p))
+            await msg.pin()
 
     async def _setup_amount_players(self) -> typing.Tuple(int, int):
         ctx = self.ctx
@@ -470,7 +513,33 @@ class MafiaGame:
 
         return amount_of_specials
 
-    async def _prepare(self):
+    async def lock_chat_channel(self):
+        await self.chat.set_permissions(
+            self.ctx.guild.default_role, overwrite=default_role_disabled_overwrites
+        )
+
+    async def unlock_chat_channel(self):
+        await self.chat.set_permissions(
+            self.ctx.guild.default_role, overwrite=default_role_overwrites
+        )
+
+    async def lock_mafia_channel(self):
+        await self.mafia_chat.set_permissions(
+            self.ctx.guild.default_role, overwrite=default_role_disabled_overwrites
+        )
+
+    async def unlock_mafia_channel(self):
+        await self.mafia_chat.set_permissions(
+            self.ctx.guild.default_role, overwrite=default_role_overwrites
+        )
+
+    async def play(self):
+        """Handles the preparation and the playing of the game"""
+        await self._setup_config()
+        await self._game_preparation()
+        await self._start()
+
+    async def _setup_config(self):
         """All the setup needed for the game to play"""
         ctx = self.ctx
         # Get/create the alive role
@@ -527,6 +596,17 @@ class MafiaGame:
         for member in self._members:
             await member.add_roles(self._alive_game_role)
 
+    async def _game_preparation(self):
+        # Sort out the players
+        await self.pick_players()
+        # Setup the categories and channels
+        category = await self._setup_category()
+        await self._setup_channels(category)
+        # Now choose the godfather
+        await self.choose_godfather()
+        # Mafia channel must be locked
+        await self.lock_mafia_channel()
+
     async def _cycle(self) -> bool:
         """Performs one cycle of day/night"""
         # Do day tasks and check for winner
@@ -550,15 +630,6 @@ class MafiaGame:
 
     async def _start(self):
         """Play the game"""
-        # Sort out the players
-        await self.pick_players()
-        # Setup the categories and channels
-        await self.setup_channels()
-        # Now choose the godfather
-        await self.choose_godfather()
-        # Mafia channel must be locked
-        await self.lock_mafia_channel()
-
         while True:
             if await self._cycle():
                 break
@@ -580,7 +651,7 @@ class MafiaGame:
         )
         await self.ctx.send(msg, allowed_mentions=AllowedMentions(users=False))
         await asyncio.sleep(60)
-        await self.cleanup_channels()
+        await self.cleanup()
 
     def stop(self):
         if self._game_task:
@@ -826,24 +897,25 @@ class MafiaGame:
 
         await self.lock_chat_channel()
 
-    async def cleanup_channels(self):
+    async def cleanup(self):
         for player in self.players:
             await player.member.remove_roles(self._alive_game_role)
 
-        try:
-            category = self.chat.category
-            for channel in category.channels:
-                await channel.delete()
-            await category.delete()
-        except (AttributeError, discord.HTTPException):
-            pass
+        if category := self.category:
+            # In order to cleanup the channels we want to remove all personal channels
+            await self._prune_category_channels(category)
+            # Then make sure the category channels are setup as they should be
+            await self._setup_category_channels(category)
 
 
 def setup(bot):
     bot.MafiaGameConfig = MafiaGameConfig
     bot.MafiaGame = MafiaGame
+    # This is used for caching the categories, and claiming them
+    bot.claimed_categories = {}
 
 
 def teardown(bot):
     del bot.MafiaGameConfig
     del bot.MafiaGame
+    del bot.claimed_categories

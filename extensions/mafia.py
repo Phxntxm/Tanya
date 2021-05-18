@@ -92,7 +92,9 @@ class Mafia(commands.Cog):
     @commands.guild_only()
     async def mafia_cleanup(self, ctx):
         """Cleans up all mafia channels. This usually shouldn't be needed, unless something
-        went wrong with the bot's auto cleanup which happens a minute after a game finishes"""
+        went wrong with the bot's auto cleanup which happens a minute after a game finishes.
+        Note that the bot caches category channels for reuse doing this command will remove
+        *all* category channels, removing that cached usage"""
         for category in ctx.guild.categories:
             if category.name == "MAFIA GAME":
                 for channel in category.channels:
@@ -113,7 +115,7 @@ class Mafia(commands.Cog):
             del self.games[ctx.guild.id]
             task, game = game
             task.cancel()
-            await game.cleanup_channels()
+            await game.cleanup()
 
     @mafia.command(name="roles")
     async def mafia_roles(self, ctx):
@@ -160,7 +162,7 @@ class Mafia(commands.Cog):
             task, game = game
             task.cancel()
             del self.games[ctx.guild.id]
-            await game.cleanup_channels()
+            await game.cleanup()
 
             self.errored_games[ctx.guild.id] = game
 
