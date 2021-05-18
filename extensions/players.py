@@ -95,10 +95,6 @@ class Player:
     def win_is_multi(self) -> bool:
         return self.role.win_is_multi
 
-    @property
-    def startup_channel_message(self) -> str:
-        return self.role.startup_channel_message
-
     def win_condition(self, game: MafiaGame) -> bool:
         return self.role.win_condition(game)
 

@@ -270,7 +270,9 @@ class MafiaGame:
                     topic=f"Your role is {player}",
                 )
                 player.set_channel(current_channel)
-                msg = await current_channel.send(player.startup_channel_message(self))
+                msg = await current_channel.send(
+                    player.role.startup_channel_message(self, player)
+                )
                 await msg.pin()
 
     async def lock_chat_channel(self):
