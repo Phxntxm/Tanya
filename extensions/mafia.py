@@ -119,7 +119,7 @@ class Mafia(commands.Cog):
         """Displays the available custom roles"""
         roles = [
             role
-            for name, role in ctx.bot.roles_mapping.items()
+            for name, role in ctx.bot.role_mapping.items()
             if name not in ("Mafia", "Citizens")
         ]
         menu = menus.MenuPages(source=RolesSource(roles), clear_reactions_after=True)

@@ -86,7 +86,7 @@ class Role(abc.ABC):
         raise NotImplementedError()
 
     def startup_channel_message(self, game: MafiaGame) -> str:
-        return f"Your role is {self.role}\n{self.description}."
+        return f"Your role is {self}\n{self.description}."
 
     def __str__(self) -> str:
         return self.__class__.__name__
