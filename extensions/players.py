@@ -11,12 +11,6 @@ if typing.TYPE_CHECKING:
 
 class Player:
     role: Role = None
-
-    # This ID will be used for our hex config representation
-    id: int = None
-    description: str = ""
-    short_description: str = ""
-
     channel: discord.TextChannel = None
     dead: bool = False
 

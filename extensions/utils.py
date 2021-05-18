@@ -12,6 +12,7 @@ from fuzzywuzzy import process
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
     from extensions.players import Player
+    from extensions.roles import Role
 
 
 class CustomContext(commands.Context):
@@ -35,8 +36,8 @@ class CustomContext(commands.Context):
 
 
 def hex_to_players(
-    num: str, all_roles: typing.List[Player]
-) -> typing.Tuple(int, int, int, typing.List[Player]):
+    num: str, all_roles: typing.List[Role]
+) -> typing.Tuple(int, int, int, typing.List[Role]):
     """Takes in a hex number and converts it to a configuration
     based on the amount of special roles it specifies"""
 
@@ -71,7 +72,7 @@ def hex_to_players(
 
 
 def players_to_hex(
-    roles: typing.List[Player],
+    roles: typing.List[Role],
     amount_of_mafia: int,
     min_players: int = None,
     max_players: int = None,

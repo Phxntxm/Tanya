@@ -150,7 +150,7 @@ class Jailor(Citizen):
     id = 3
     is_jailor: bool = True
     jails: int = 3
-    jailed: Player = None
+    target: Player = None
     attack_type = AttackType.unstoppable
     defense_type = DefenseType.powerful
     short_description = "Jail someone to talk to them during the night"
@@ -168,7 +168,7 @@ class Jailor(Citizen):
         target = await player.wait_for_player(game, msg)
         target.night_role_blocked = True
         target.jail(player)
-        self.jailed = target
+        self.target = target
 
         self.jails -= 1
         await player.channel.send(
@@ -178,8 +178,8 @@ class Jailor(Citizen):
         )
 
     async def night_task(self, game: MafiaGame, player: Player):
-        if self.jailed:
-            await game.jail.set_permissions(self.jailed.member, read_messages=True)
+        if self.target:
+            await game.jail.set_permissions(self.target.member, read_messages=True)
             # Make sure to start the unjailing process
             game.ctx.create_task(self.unjail(game))
 
@@ -188,10 +188,10 @@ class Jailor(Citizen):
                 # If the jailor is the one talking in his channel
                 if m.channel == player.channel and m.author == player.member:
                     if m.content == "Execute":
-                        self.jailed.kill(player)
+                        self.target.kill(player)
                         game.ctx.create_task(
                             game.jail.set_permissions(
-                                self.jailed.member, send_messages=False
+                                self.target.member, send_messages=False
                             )
                         )
                         game.ctx.create_task(
@@ -201,9 +201,9 @@ class Jailor(Citizen):
                     else:
                         game.ctx.create_task(game.jail_webhook.send(m.content))
                 # If the jailed is the one talking in the jail channel
-                elif m.channel == game.jail and m.author == self.jailed:
+                elif m.channel == game.jail and m.author == self.target:
                     game.ctx.create_task(
-                        self.channel.send(f"{self.jailed.member.name}: {m.content}")
+                        player.channel.send(f"{self.target.member.name}: {m.content}")
                     )
 
                 return False
@@ -211,9 +211,9 @@ class Jailor(Citizen):
             await game.ctx.bot.wait_for("message", check=check)
 
     async def unjail(self, game: MafiaGame):
-        member = self.jailed.member
+        member = self.target.member
         await asyncio.sleep(game._config.night_length)
-        self.jailed = None
+        self.target = None
         await game.jail.set_permissions(member, read_messages=False)
 
 
@@ -276,9 +276,9 @@ class Lookout(Citizen):
         if visitors:
             fmt = "\n".join(p.member.name for p in visitors)
             msg = f"{self.watching.member.name} was visited by:\n{fmt}"
-            await self.channel.send(msg)
+            await player.channel.send(msg)
         else:
-            await self.channel.send(
+            await player.channel.send(
                 f"{self.watching.member.name} was not visited by anyone"
             )
 
@@ -372,7 +372,7 @@ class Survivor(Independent):
     )
 
     def win_condition(self, game: MafiaGame, player: Player) -> bool:
-        return not self.dead
+        return not player.dead
 
     async def night_task(self, game: MafiaGame, player: Player):
         if self.vests <= 0:
