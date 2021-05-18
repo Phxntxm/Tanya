@@ -82,7 +82,7 @@ class Mafia(commands.Cog):
         """Starts another game with the same configuration as the last"""
         game = self.previous_games.get(ctx.guild.id)
         if game:
-            await self.mafia_start(game._preconfigured_config)
+            await self.mafia_start(ctx, game._preconfigured_config)
         else:
             await ctx.send("No previous game detected")
 
