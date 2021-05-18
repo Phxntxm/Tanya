@@ -665,7 +665,7 @@ class MafiaGame:
                     # If protected, check the power of protection against attacking
                     if (
                         player.protected_by
-                        and killer.attack_type > player.protected_by.defense_type
+                        and killer.attack_type <= player.protected_by.defense_type
                     ):
                         if player.channel:
                             await player.channel.send(
@@ -720,7 +720,7 @@ class MafiaGame:
                         ):
                             player.executionor_target.role = self.ctx.bot.role_mapping[
                                 "Jester"
-                            ](player)
+                            ]()
 
             if not killed:
                 notifs.append("- No one was killed last night!")
