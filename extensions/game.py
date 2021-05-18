@@ -409,7 +409,7 @@ class MafiaGame:
                     if start_timeout:
                         timer_not_started = False
                         embed.description += f"\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players ({max_players}) reached"
-                        ctx.bot.create_task(joining_over())
+                        ctx.create_task(joining_over())
                     embed.set_footer(
                         text=f"{len(game_players)}/{min_players} Needed to join"
                     )
@@ -438,14 +438,12 @@ class MafiaGame:
 
             done, pending = await asyncio.wait(
                 [
-                    self.ctx.create_task(
-                        ctx.bot.wait_for("raw_reaction_add", check=check)
-                    ),
-                    self.ctx.create_task(
+                    ctx.create_task(ctx.bot.wait_for("raw_reaction_add", check=check)),
+                    ctx.create_task(
                         ctx.bot.wait_for("raw_reaction_remove", check=check)
                     ),
-                    self.ctx.create_task(update_embed()),
-                    self.ctx.create_task(join_event.wait()),
+                    ctx.create_task(update_embed()),
+                    ctx.create_task(join_event.wait()),
                 ],
                 return_when=asyncio.FIRST_COMPLETED,
                 timeout=300,
