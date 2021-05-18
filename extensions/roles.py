@@ -69,6 +69,9 @@ class Role(abc.ABC):
     defense_type: DefenseType = None
 
     is_godfather: bool = False
+    is_citizen: bool = False
+    is_mafia: bool = False
+    is_independent: bool = False
 
     async def night_task(self, game: MafiaGame) -> None:
         return
