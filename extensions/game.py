@@ -912,10 +912,15 @@ def setup(bot):
     bot.MafiaGameConfig = MafiaGameConfig
     bot.MafiaGame = MafiaGame
     # This is used for caching the categories, and claiming them
-    bot.claimed_categories = {}
+
+    # this is the only attribute like this, but we do NOT want to override
+    # if it already exists. We would remove games that can already be running's
+    # claims, and claim over them. This would cause chaos. Games can still be played
+    # even if this is reloaded, as they will be stale references still stored in mafia
+    if not hasattr(bot, "claimed_categories"):
+        bot.claimed_categories = {}
 
 
 def teardown(bot):
     del bot.MafiaGameConfig
     del bot.MafiaGame
-    del bot.claimed_categories
