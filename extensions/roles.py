@@ -184,7 +184,7 @@ class Jailor(Citizen):
 
         self.jails -= 1
         await player.channel.send(
-            f"\U0001f46e {player.member.name} has been jailed. During the night "
+            f"\U0001f46e {target.member.name} has been jailed. During the night "
             "anything you say in here will be sent there, and vice versa. "
             "If you say just `Execute` they will be executed"
         )
