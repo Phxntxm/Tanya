@@ -351,22 +351,27 @@ class MafiaGame:
             # Start the event here so that the update can use it
             join_event = asyncio.Event()
 
-            async def update_embed(start_timeout=False):
-                if start_timeout:
-                    nonlocal timer_not_started
-                    timer_not_started = False
-                    embed.description += f"\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players ({max_players}) reached"
+            async def joining_over():
+                await asyncio.sleep(wait_length_for_players_to_join)
+                join_event.set()
+
+            async def update_embed():
+                while True:
+                    # We want to start timeout if we've reached min players, but haven't
+                    # already started it
+                    start_timeout = (
+                        len(game_players) == min_players and timer_not_started
+                    )
+                    if start_timeout:
+                        nonlocal timer_not_started
+                        timer_not_started = False
+                        embed.description += f"\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players ({max_players}) reached"
+                        ctx.bot.create_task(joining_over())
                     embed.set_footer(
                         text=f"{len(game_players)}/{min_players} Needed to join"
                     )
                     await msg.edit(embed=embed)
-                    await asyncio.sleep(wait_length_for_players_to_join)
-                    join_event.set()
-                else:
-                    embed.set_footer(
-                        text=f"{len(game_players)}/{min_players} Needed to join"
-                    )
-                    await msg.edit(embed=embed)
+                    await asyncio.sleep(5)
 
             def check(p):
                 # First don't accept any reactions that aren't actually people joining/leaving
@@ -387,12 +392,6 @@ class MafiaGame:
                         game_players.remove(p.user_id)
                     except KeyError:
                         pass
-                ctx.create_task(
-                    update_embed(
-                        start_timeout=len(game_players) == min_players
-                        and timer_not_started
-                    )
-                )
 
             done, pending = await asyncio.wait(
                 [
@@ -402,6 +401,7 @@ class MafiaGame:
                     self.ctx.create_task(
                         ctx.bot.wait_for("raw_reaction_remove", check=check)
                     ),
+                    self.ctx.create_tas(update_embed()),
                     self.ctx.create_task(join_event.wait()),
                 ],
                 return_when=asyncio.FIRST_COMPLETED,
@@ -651,78 +651,77 @@ class MafiaGame:
 
         await self.lock_mafia_channel()
 
+    async def _handle_killing(self, killer: Player, killed: Player) -> typing.List[str]:
+        # The notifications that will be sent to the day chat
+        notifs = []
+        protector = killed.protected_by
+        # If protected, check the power of protection against attacking
+        if protector and killer.attack_type <= protector.defense_type:
+            await killed.channel.send(killed.protected_by.save_message)
+            # If the killer was mafia, we also want to notify them of the saving
+            if killer.is_mafia:
+                await self.mafia_chat.send(
+                    "{killed} was saved last night from your attack!"
+                )
+        # There was no protection, they're dead
+        else:
+            # If they were cleaned, let the cleaner know their role
+            if cleaner := killed.cleaned_by:
+                await cleaner.channel.send(
+                    f"You cleaned {killed.member.name} up, their role was {killed}"
+                )
+            # If they suicided, send suicide message
+            elif killer == killed:
+                notifs.append(
+                    killed.suicide_message.format(killer=killer, killed=killed)
+                )
+                await self.chat.send(
+                    f"- {killed.member.mention} ({killed}) suicided during the night!"
+                )
+            # Otherwise send killed message
+            else:
+                notifs.append(
+                    killer.attack_message.format(killer=killer, killed=killed)
+                )
+                await self.chat.send(
+                    f"- {killed.member.mention} ({killed}) was killed during the night!"
+                )
+            # Set them as dead, remove alive role
+            killed.dead = True
+            await killed.member.remove_roles(self._alive_game_role)
+            # This will permanently disable them from talking
+            await self.chat.set_permissions(
+                killed.member, read_messages=True, send_messages=False
+            )
+            if killed.channel:
+                await killed.channel.set_permissions(
+                    killed.member, read_messages=True, send_messages=False
+                )
+            if killed.is_mafia:
+                await self.mafia_chat.set_permissions(
+                    killed.member, read_messages=True, send_messages=False
+                )
+            await self.dead_chat.set_permissions(killed.member, read_messages=True)
+            # Now if they were godfather, choose new godfather
+            if killed.is_godfather:
+                await self.choose_godfather()
+                killed.role.is_godfather = False
+            # If they had an executionor targetting them, they become a jester
+            if killed.executionor_target and not killed.executionor_target.dead:
+                killed.executionor_target.role = self.ctx.bot.role_mapping["Jester"]()
+
+        return notifs
+
     async def pre_day(self):
         notifs = []
         if self._day > 1:
-            killed = []
-
             for player in self.players:
-                # Already dead people
                 if player.dead:
                     continue
-                # If they were killed by someone
                 if killer := player.killed_by:
-                    # If protected, check the power of protection against attacking
-                    if (
-                        player.protected_by
-                        and killer.attack_type <= player.protected_by.defense_type
-                    ):
-                        if player.channel:
-                            await player.channel.send(
-                                f"You were killed last night, but {player.protected_by} saved you!"
-                            )
-                        if killer.is_mafia:
-                            await self.mafia_chat.send(
-                                "{player} was saved last night from your attack!"
-                            )
-                    else:
-                        # If they were cleaned, let the cleaner know their role
-                        if cleaner := player.cleaned_by:
-                            await cleaner.channel.send(
-                                f"You cleaned {player.member.name} up, their role was {player}"
-                            )
-                        # Only notify if the body wasn't cleaned
-                        else:
-                            notifs.append(
-                                f"- {player.member.mention} ({player}) was killed by {killer}"
-                            )
-                            await self.chat.send(
-                                f"- {player.member.mention} ({player}) was killed during the night!"
-                            )
-                            # Just to check if someone was killed
-                            killed.append(player)
+                    notifs.extend(await self._handle_killing(killer, player))
 
-                        player.dead = True
-                        await player.member.remove_roles(self._alive_game_role)
-                        # This will permanently disable them from talking
-                        await self.chat.set_permissions(
-                            player.member, read_messages=True, send_messages=False
-                        )
-                        if player.channel:
-                            await player.channel.set_permissions(
-                                player.member, read_messages=True, send_messages=False
-                            )
-                        if player.is_mafia:
-                            await self.mafia_chat.set_permissions(
-                                player.member, read_messages=True, send_messages=False
-                            )
-                        await self.dead_chat.set_permissions(
-                            player.member, read_messages=True
-                        )
-                        # Now if they were godfather, choose new godfather
-                        if player.is_godfather:
-                            await self.choose_godfather()
-                            player.is_godfather = False
-                        # If they had an executionor targetting them, they become a jester
-                        if (
-                            player.executionor_target
-                            and not player.executionor_target.dead
-                        ):
-                            player.executionor_target.role = self.ctx.bot.role_mapping[
-                                "Jester"
-                            ]()
-
-            if not killed:
+            if not notifs:
                 notifs.append("- No one was killed last night!")
 
             await self.day_notification(*notifs)
