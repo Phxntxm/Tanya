@@ -23,10 +23,10 @@ class AttackType(Enum):
     def __lt__(self, other: DefenseType):
         return self.value < other.value
 
-    def __gte__(self, other: DefenseType):
+    def __ge__(self, other: DefenseType):
         return self.value >= other.value
 
-    def __lte__(self, other: DefenseType):
+    def __le__(self, other: DefenseType):
         return self.value <= other.value
 
 
@@ -41,10 +41,10 @@ class DefenseType(Enum):
     def __lt__(self, other: AttackType):
         return self.value < other.value
 
-    def __gte__(self, other: AttackType):
+    def __ge__(self, other: AttackType):
         return self.value >= other.value
 
-    def __lte__(self, other: AttackType):
+    def __le__(self, other: AttackType):
         return self.value <= other.value
 
 
@@ -562,7 +562,7 @@ class Arsonist(Independent):
         doused = [p for p in game.players if p.doused and not p.dead]
         doused_msg = "\n".join(p.member.name for p in doused)
         undoused = [p.member.name for p in game.players if not p.doused and not p.dead]
-        msg = f"Doused targets:\n\n{doused_msg}\nChoose a target to douse, if you choose yourself you will ignite all doused targets"
+        msg = f"Doused targets:\n\n{doused_msg}\n\nChoose a target to douse, if you choose yourself you will ignite all doused targets"
 
         player = await self.wait_for_player(
             game, msg, only_others=False, choices=undoused
