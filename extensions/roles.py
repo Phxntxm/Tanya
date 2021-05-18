@@ -199,7 +199,7 @@ class Jailor(Citizen):
             def check(m):
                 # If the jailor is the one talking in his channel
                 if m.channel == player.channel and m.author == player.member:
-                    if m.content == "Execute":
+                    if m.content.lower() == "execute":
                         self.target.kill(player)
                         game.ctx.create_task(
                             game.jail.set_permissions(
