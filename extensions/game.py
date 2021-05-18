@@ -444,7 +444,7 @@ class MafiaGame:
                     self.ctx.create_task(
                         ctx.bot.wait_for("raw_reaction_remove", check=check)
                     ),
-                    self.ctx.create_tas(update_embed()),
+                    self.ctx.create_task(update_embed()),
                     self.ctx.create_task(join_event.wait()),
                 ],
                 return_when=asyncio.FIRST_COMPLETED,
