@@ -399,6 +399,7 @@ class MafiaGame:
                 join_event.set()
 
             async def update_embed():
+                nonlocal timer_not_started
                 while True:
                     # We want to start timeout if we've reached min players, but haven't
                     # already started it
@@ -406,7 +407,6 @@ class MafiaGame:
                         len(game_players) == min_players and timer_not_started
                     )
                     if start_timeout:
-                        nonlocal timer_not_started
                         timer_not_started = False
                         embed.description += f"\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players ({max_players}) reached"
                         ctx.bot.create_task(joining_over())
