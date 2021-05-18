@@ -280,7 +280,7 @@ class Lookout(Citizen):
         self.watching = None
 
 
-class Mafia(Player):
+class Mafia(Role):
     id = 75
     is_mafia = True
     attack_type = AttackType.basic
@@ -355,7 +355,7 @@ class Disguiser(Mafia):
         await self.channel.send("\N{THUMBS UP SIGN}")
 
 
-class Independent(Player):
+class Independent(Role):
     is_independent = True
 
 
