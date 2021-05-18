@@ -216,7 +216,7 @@ def private_channel_check(
         try:
             p = mapping[int(m.content)]
             p = game.ctx.bot.get_mafia_player(game, p)
-        except (KeyError, IndexError, commands.MemberNotFound):
+        except (ValueError, KeyError, commands.MemberNotFound):
             return False
         # Check the choosing self
         if not can_choose_self and player == p:
@@ -240,7 +240,7 @@ def mafia_kill_check(
         try:
             p = mapping[int(m.content)]
             p = game.ctx.bot.get_mafia_player(game, p)
-        except (KeyError, IndexError, commands.MemberNotFound):
+        except (ValueError, KeyError, commands.MemberNotFound):
             return False
         else:
             if p.is_mafia:
