@@ -39,8 +39,6 @@ class Player:
         self.member = discord_member
         self.ctx = ctx
         self.role = role
-        # I hate this but it *needs* the player...
-        role.player = self
 
     def __str__(self) -> str:
         return str(self.role)
@@ -98,7 +96,7 @@ class Player:
         return self.role.win_is_multi
 
     def win_condition(self, game: MafiaGame) -> bool:
-        return self.role.win_condition(game)
+        return self.role.win_condition(game, self)
 
     def cleanup_attrs(self):
         self.visited_by = []
@@ -191,15 +189,15 @@ class Player:
             )
 
     async def day_task(self, game: MafiaGame):
-        if msg := self.role.day_task(game):
+        if msg := self.role.day_task(game, self):
             await self.channel.send(msg)
 
     async def night_task(self, game: MafiaGame):
-        if msg := self.role.night_task(game):
+        if msg := self.role.night_task(game, self):
             await self.channel.send(msg)
 
     async def post_night_task(self, game: MafiaGame):
-        if msg := self.role.post_night_task(game):
+        if msg := self.role.post_night_task(game, self):
             await self.channel.send(msg)
 
 
