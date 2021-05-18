@@ -120,7 +120,10 @@ class Doctor(Citizen):
 
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive that isn't ourselves
-        msg = "Please provide the name of one player you would like to save from being killed tonight"
+        msg = (
+            "Please provide **the number next to** the name of one player "
+            "you would like to save from being killed tonight"
+        )
         target = await player.wait_for_player(game, msg)
         target.protect(player)
         await player.channel.send(
@@ -142,7 +145,7 @@ class Sheriff(Citizen):
 
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive that isn't ourselves
-        msg = "If you would like to shoot someone tonight, provide just their name"
+        msg = "If you would like to shoot someone tonight, provide just **the number next to** their name"
         target = await player.wait_for_player(game, msg)
 
         # Handle what happens if their choice is right/wrong
@@ -176,7 +179,7 @@ class Jailor(Citizen):
     async def day_task(self, game: MafiaGame, player: Player):
         if self.jails <= 0:
             return
-        msg = "If you would like to jail someone tonight, provide just their name"
+        msg = "If you would like to jail someone tonight, provide just **the number next to** their name"
         target = await player.wait_for_player(game, msg)
         target.night_role_blocked = True
         target.jail(player)
@@ -240,12 +243,12 @@ class PI(Citizen):
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive
         choices = [p.member.name for p in game.players if not p.dead and p != self]
-        msg = "Who is the first person you want to investigate"
+        msg = "Choose **the number next to** the first person you want to investigate"
         player1 = await player.wait_for_player(game, msg, choices=choices)
         choices.remove(player1.member.name)
 
         while True:
-            msg = "Who is the second person you want to investigate"
+            msg = "Choose **the number next to** the second person you want to investigate"
             player2 = await player.wait_for_player(game, msg, choices=choices)
             if player2 == player1:
                 await player.channel.send("You can't choose the same person twice")
@@ -275,7 +278,7 @@ class Lookout(Citizen):
     )
 
     async def night_task(self, game: MafiaGame, player: Player):
-        msg = "Provide the player you want to watch tonight, at the end of the night I will let you know who visited them"
+        msg = "Provide **the number next to** the player you want to watch tonight, at the end of the night I will let you know who visited them"
         self.watching = await player.wait_for_player(game, msg)
         await player.channel.send(
             f"\U0001f440 You'll be watching {self.watching.member.name} tonight"
@@ -337,7 +340,7 @@ class Janitor(Mafia):
         if self.cleans <= 0:
             return
 
-        msg = "Provide the player you want to clean tonight"
+        msg = "Provide **the number next to** the player you want to clean tonight"
         player = await player.wait_for_player(game, msg)
         player.clean(player)
         await player.channel.send(
@@ -360,12 +363,10 @@ class Disguiser(Mafia):
         non_mafia = [
             p.member.name for p in game.players if not p.dead and not p.is_mafia
         ]
-        msg = "Choose the mafia member you want to disguise"
+        msg = "Choose **the number next to** the mafia member you want to disguise"
         player1 = await player.wait_for_player(game, msg, choices=mafia)
 
-        msg = (
-            f"Choose the non-mafia member you want to disguise {player1.member.name} as"
-        )
+        msg = f"Choose **the number next to** the non-mafia member you want to disguise {player1.member.name} as"
         player2 = await player.wait_for_player(game, msg, choices=non_mafia)
 
         if not player1.jailed and not player2.jailed:
@@ -468,7 +469,11 @@ class Arsonist(Independent):
         doused = [p for p in game.players if p.doused and not p.dead]
         doused_msg = "\n".join(p.member.name for p in doused)
         undoused = [p.member.name for p in game.players if not p.doused and not p.dead]
-        msg = f"Doused targets:\n\n{doused_msg}\n\nChoose a target to douse, if you choose yourself you will ignite all doused targets"
+        msg = (
+            f"Doused targets:\n\n{doused_msg}\n\n"
+            "Choose **the number next to** a target to douse, "
+            "if you choose yourself you will ignite all doused targets"
+        )
 
         player = await player.wait_for_player(
             game, msg, only_others=False, choices=undoused
