@@ -46,6 +46,18 @@ class Player:
         return self.role.defense_type
 
     @property
+    def attack_message(self) -> str:
+        return self.role.attack_message
+
+    @property
+    def save_message(self) -> str:
+        return self.role.save_message
+
+    @property
+    def suicide_message(self) -> str:
+        return self.role.suicide_message
+
+    @property
     def limit(self) -> int:
         return self.role.limit
 
