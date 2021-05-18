@@ -1,52 +1,12 @@
 from __future__ import annotations
-
-import asyncio
-import random
 import typing
-from enum import Enum
 
 import discord
 from discord.ext import commands
 
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
-    from extensions.roles import Role
-
-
-class AttackType(Enum):
-    basic = 1
-    powerful = 2
-    unstoppable = 3
-
-    def __gt__(self, other: DefenseType):
-        return self.value > other.value
-
-    def __lt__(self, other: DefenseType):
-        return self.value < other.value
-
-    def __ge__(self, other: DefenseType):
-        return self.value >= other.value
-
-    def __le__(self, other: DefenseType):
-        return self.value <= other.value
-
-
-class DefenseType(Enum):
-    basic = 1
-    powerful = 2
-    unstoppable = 3
-
-    def __gt__(self, other: AttackType):
-        return self.value > other.value
-
-    def __lt__(self, other: AttackType):
-        return self.value < other.value
-
-    def __ge__(self, other: AttackType):
-        return self.value >= other.value
-
-    def __le__(self, other: AttackType):
-        return self.value <= other.value
+    from extensions.roles import Role, AttackType, DefenseType
 
 
 class Player:
