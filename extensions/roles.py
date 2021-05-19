@@ -79,6 +79,9 @@ class Role(abc.ABC):
     channel: discord.TextChannel = None
     player: Player = None
 
+    description = ""
+    short_description = ""
+
     async def night_task(self, game: MafiaGame, player: Player) -> None:
         return
 
@@ -165,7 +168,7 @@ class Jailor(Citizen):
     id = 3
     is_jailor: bool = True
     jails: int = 3
-    target: Player = None
+    target: typing.Optional[Player] = None
     attack_type = AttackType.unstoppable
     defense_type = DefenseType.powerful
     short_description = "Jail someone to talk to them during the night"
@@ -271,7 +274,7 @@ class PI(Citizen):
 
 class Lookout(Citizen):
     id = 5
-    watching: Player = None
+    watching: typing.Optional[Player] = None
     short_description = "Watch someone each night to see who visits them"
     description = (
         "Your job is to watch carefully, every night you can watch one person "

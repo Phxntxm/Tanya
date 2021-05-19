@@ -37,7 +37,7 @@ class CustomContext(commands.Context):
 
 def hex_to_players(
     num: str, all_roles: typing.List[Role]
-) -> typing.Tuple(int, int, int, typing.List[Role]):
+) -> typing.Tuple[int, int, int, typing.List[Role]]:
     """Takes in a hex number and converts it to a configuration
     based on the amount of special roles it specifies"""
 
