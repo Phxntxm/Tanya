@@ -43,7 +43,6 @@ class MafiaGameConfig:
     night_length: int = 90
     day_length: int = 120
 
-
 class MafiaGame:
     def __init__(self, ctx: utils.CustomContext, *, config: str):
         # The discord members, we'll produce our list of players later
@@ -73,6 +72,7 @@ class MafiaGame:
         self._day: int = 1
         self._day_notifications = collections.defaultdict(list)
         self._role_list: typing.Optional[list] = None
+        self._game_task: typing.Optional[asyncio.Task] = None
 
     @property
     def total_mafia(self) -> int:
