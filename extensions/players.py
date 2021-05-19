@@ -144,7 +144,7 @@ class Player:
     @classmethod
     async def convert(cls, ctx: commands.Context, arg: str) -> Player:
         for name, role in ctx.bot.role_mapping.items():
-            if name not in ("Mafia", "Citizen") and name == arg:
+            if name not in ("Mafia", "Citizen") and name.lower() == arg.lower():
                 return cls(ctx.author, ctx, role())
 
         raise commands.BadArgument(f"Could not find a role named {arg}")
