@@ -15,12 +15,12 @@ class Player:
     dead: bool = False
 
     # Players that affect this player
-    killed_by: Player = None
+    killed_by: typing.Optional[Player] = None
     visited_by: typing.List[Player] = None
-    protected_by: Player = None
-    cleaned_by: Player = None
-    disguised_as: Player = None
-    executionor_target: Player = None
+    protected_by: typing.Optional[Player] = None
+    cleaned_by: typing.Optional[Player] = None
+    disguised_as: typing.Optional[Player] = None
+    executionor_target: typing.Optional[Player] = None
     # Different bools for specific roles needed for each player
     doused: bool = False
     lynched: bool = False

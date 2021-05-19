@@ -5,13 +5,12 @@ import collections
 import dataclasses
 from extensions.players import Player
 import discord
-from discord.ext import commands
 from discord.mentions import AllowedMentions
 import random
 import typing
 
 if typing.TYPE_CHECKING:
-    from extensions import players
+    from extensions import players as _players, utils
 
 
 default_role_overwrites = discord.PermissionOverwrite(
@@ -39,41 +38,41 @@ user_overwrites = discord.PermissionOverwrite(read_messages=True)
 @dataclasses.dataclass
 class MafiaGameConfig:
     starting_mafia: int
-    special_roles: typing.List[players.Player]
-    ctx: commands.Context
+    special_roles: typing.List[_players.Player]
+    ctx: utils.CustomContext
     night_length: int = 90
     day_length: int = 120
 
 
 class MafiaGame:
-    def __init__(self, ctx: commands.Context, *, config: str):
+    def __init__(self, ctx: utils.CustomContext, *, config: str):
         # The discord members, we'll produce our list of players later
-        self._members: typing.List[discord.Member] = None
+        self._members: typing.Optional[typing.List[discord.Member]] = None
         # The actual players of the game
-        self.players: typing.List[players.Player] = []
+        self.players: typing.List[_players.Player] = []
 
-        self.ctx: commands.Context = ctx
+        self.ctx: utils.CustomContext = ctx
         self.is_day: bool = True
 
         # Different chats needed
         self.category = discord.CategoryChannel = None
-        self.chat: discord.TextChannel = None
-        self.info: discord.TextChannel = None
-        self.jail: discord.TextChannel = None
-        self.jail_webhook: discord.Webhook = None
-        self.mafia_chat: discord.TextChannel = None
-        self.dead_chat: discord.TextChannel = None
+        self.chat: typing.Optional[discord.TextChannel] = None
+        self.info: typing.Optional[discord.TextChannel] = None
+        self.jail: typing.Optional[discord.TextChannel] = None
+        self.jail_webhook: typing.Optional[discord.Webhook] = None
+        self.mafia_chat: typing.Optional[discord.TextChannel] = None
+        self.dead_chat: typing.Optional[discord.TextChannel] = None
 
         self._alive_game_role_name: str = "Alive Players"
-        self._alive_game_role: discord.Role = None
+        self._alive_game_role: typing.Optional[discord.Role] = None
 
         self._rand = random.SystemRandom()
-        self._config: MafiaGameConfig = None
+        self._config: typing.Optional[MafiaGameConfig] = None
         # The preconfigured option that can be provided
         self._preconfigured_config: str = config
         self._day: int = 1
         self._day_notifications = collections.defaultdict(list)
-        self._role_list: list = None
+        self._role_list: typing.Optional[list] = None
 
     @property
     def total_mafia(self) -> int:
@@ -94,7 +93,7 @@ class MafiaGame:
         return len(self.players)
 
     @property
-    def godfather(self) -> players.Mafia:
+    def godfather(self) -> _players.Player:
         for player in self.players:
             if player.is_godfather and not player.dead:
                 return player
@@ -145,7 +144,7 @@ class MafiaGame:
         else:
             await msg.edit(embed=embed)
 
-        self._day_notifications[self._day] = (msg, current_notifications)
+        self._day_notifications[self._day] = [msg, current_notifications]
 
     def check_winner(self) -> bool:
         """Loops through all the winners and checks their win conditions"""
@@ -289,7 +288,6 @@ class MafiaGame:
         self.dead_chat = dead
         self.mafia_chat = mafia
         self.jail = jail
-        self.jail_webhook
 
     async def _prune_category_channels(self, category: discord.CategoryChannel):
         """Removes all the personal channels in the category, leaving just the
@@ -343,7 +341,7 @@ class MafiaGame:
             msg = await channel.send(p.role.startup_channel_message(self, p))
             await msg.pin()
 
-    async def _setup_amount_players(self) -> typing.Tuple(int, int):
+    async def _setup_amount_players(self) -> typing.Tuple[int, int]:
         ctx = self.ctx
         minimum_players_needed = 3
         # Get max players
@@ -367,7 +365,7 @@ class MafiaGame:
 
     async def _setup_players(
         self, min_players: int, max_players: int
-    ) -> typing.List[players.Player]:
+    ) -> typing.List[discord.Member]:
         wait_length_for_players_to_join = 60
         ctx = self.ctx
         game_players = set()
@@ -492,7 +490,7 @@ class MafiaGame:
 
     async def _setup_special_roles(
         self, players: int, mafia: int
-    ) -> typing.List[typing.Tuple(players.Player, int)]:
+    ) -> typing.List[typing.Tuple[_players.Player, int]]:
         ctx = self.ctx
         amount_of_specials = [
             (v, 0)
@@ -816,7 +814,7 @@ class MafiaGame:
         tasks = [self.ctx.create_task(day_sleep())]
 
         nominations = {}
-        msg = None
+        msg: typing.Optional[discord.Message] = None
 
         async def nominate_player():
             nonlocal msg
