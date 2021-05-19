@@ -287,6 +287,7 @@ class MafiaGame:
         self.dead_chat = dead
         self.mafia_chat = mafia
         self.jail = jail
+        self.jail_webhook = jail_webhook
 
     async def _prune_category_channels(self, category: discord.CategoryChannel):
         """Removes all the personal channels in the category, leaving just the
