@@ -72,7 +72,6 @@ class MafiaGame:
         self._day: int = 1
         self._day_notifications = collections.defaultdict(list)
         self._role_list: typing.Optional[list] = None
-        self._game_task: typing.Optional[asyncio.Task] = None
 
     @property
     def total_mafia(self) -> int:
@@ -646,10 +645,6 @@ class MafiaGame:
         await self.ctx.send(msg, allowed_mentions=AllowedMentions(users=False))
         await asyncio.sleep(60)
         await self.cleanup()
-
-    def stop(self):
-        if self._game_task:
-            self._game_task.cancel()
 
     async def night_tasks(self):
         await self.night_notification()
