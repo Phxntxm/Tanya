@@ -109,8 +109,9 @@ class MafiaGame:
 
     async def day_notification(self, *deaths: Player):
         """Creates a notification image with all of todays notifications"""
-        buffer = await self.ctx.bot.create_day_image(self, list(deaths))
-        await self.info.send(file=discord.File(buffer, filename="day.png"))
+        async with self.info.typing():
+            buffer = await self.ctx.bot.create_day_image(self, list(deaths))
+            await self.info.send(file=discord.File(buffer, filename="day.png"))
 
     def check_winner(self) -> bool:
         """Loops through all the winners and checks their win conditions"""
@@ -741,18 +742,16 @@ class MafiaGame:
         return notifs
 
     async def pre_day(self):
-        notifs = []
+        deaths = []
         if self._day > 1:
             for player in self.players:
                 if player.dead:
                     continue
                 if killer := player.killed_by:
-                    notifs.extend(await self._handle_killing(killer, player))
+                    await self._handle_killing(killer, player)
+                    deaths.append(player)
 
-            if not notifs:
-                notifs.append("- No one was killed last night!")
-
-            await self.day_notification(*notifs)
+            await self.day_notification(*deaths)
         else:
             await self.day_notification()
 
