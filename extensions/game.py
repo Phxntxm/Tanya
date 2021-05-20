@@ -231,7 +231,7 @@ class MafiaGame:
             self._alive_game_role: can_send_overwrites,
         }
         dead_overwrites = {
-            self.ctx.guild.default_role: spectating_overwrites,
+            self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
         }
         mafia_overwrites = {
@@ -696,6 +696,9 @@ class MafiaGame:
 
             # If they weren't killed, we don't care
             if not killer:
+                continue
+            # Don't care about already dead players
+            if player.dead:
                 continue
 
             # If they were protected, then let them know
