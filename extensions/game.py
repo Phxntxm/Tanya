@@ -340,6 +340,12 @@ class MafiaGame:
             channel = await category.create_text_channel(
                 p.member.name, overwrites=overwrites
             )
+            # Allow them to see info and chat
+            await self.chat.set_permissions(p.member, read_messages=True)
+            await self.info.set_permissions(p.member, read_messages=True)
+            # If they're mafia let them see the mafia channel
+            if p.is_mafia:
+                await self.mafia_chat.set_permissions(p.member, read_messages=True)
             # Set it on the player object
             p.set_channel(channel)
             # Send them their startup message and pin it
