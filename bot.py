@@ -34,6 +34,6 @@ bot = Bot(
 for ext in glob("extensions/*.py"):
     bot.load_extension(ext.replace("/", ".")[:-3])
 
-bot.load_extension("jishaku")
+#bot.load_extension("jishaku")
 
 bot.run(config.token)
