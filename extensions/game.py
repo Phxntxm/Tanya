@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import collections
 import dataclasses
 from extensions.players import Player
 import discord
@@ -70,7 +69,6 @@ class MafiaGame:
         # The preconfigured option that can be provided
         self._preconfigured_config: str = config
         self._day: int = 1
-        self._day_notifications = collections.defaultdict(list)
         self._role_list: typing.Optional[list] = None
 
     @property
@@ -108,42 +106,10 @@ class MafiaGame:
         )
         await self.chat.send(content=self._alive_game_role.mention, embed=embed)
 
-    async def day_notification(self, *notifications: str):
-        """Creates a notification embed with all of todays notifications"""
-        msg, current_notifications = self._day_notifications.get(self._day, (None, []))
-        current_notifications.extend(notifications)
-        fmt = "Roles Alive:\n"
-        # Get alive players to add to alive roles
-        alive_players = {}
-        for player in self.players:
-            if player.dead:
-                continue
-            alive_players[str(player)] = alive_players.get(str(player), 0) + 1
-        fmt += "\n".join(f"{key}: {count}" for key, count in alive_players.items())
-        fmt += "\n\n"
-        # If we're not on day one, notify that you can nominate
-        if self._day > 1:
-            fmt += f"**Type >>nominate member to nominate someone to be lynched**. Chat in {self.chat.mention}\n\n"
-        else:
-            fmt += f"Chat in {self.chat.mention}\n\n"
-        # Add the recent actions
-        fmt += "**Recent Actions**\n"
-        fmt += "\n".join(current_notifications)
-
-        embed = discord.Embed(
-            title=f"Day {self._day}", description=fmt, colour=0xF6F823
-        )
-        embed.set_thumbnail(
-            url="https://media.discordapp.net/attachments/840698427755069475/841841923936485416/Sw5vSWOjshUo40xEj-hWqfiRu8Ma2CtYjjh7prRsF6ADPk_z7znpEBf-E3i44U9Hukh3ZJOFhm9S43naa4dEA8pXX4dfAJeEv0bl.png"
-        )
-        if msg is None:
-            msg = await self.info.send(
-                content=self._alive_game_role.mention, embed=embed
-            )
-        else:
-            await msg.edit(embed=embed)
-
-        self._day_notifications[self._day] = [msg, current_notifications]
+    async def day_notification(self, *deaths: Player):
+        """Creates a notification image with all of todays notifications"""
+        buffer = await self.ctx.bot.create_day_image(list(deaths))
+        await self.info.send(file=discord.File(buffer, filename="day.png"))
 
     def check_winner(self) -> bool:
         """Loops through all the winners and checks their win conditions"""
@@ -787,7 +753,7 @@ class MafiaGame:
 
             await self.day_notification(*notifs)
         else:
-            await self.day_notification("- Game has started!")
+            await self.day_notification()
 
         # Cleanup everyone's attrs
         for p in self.players:
@@ -879,9 +845,7 @@ class MafiaGame:
                         # If there's mafia, citizens win. Just return, the cycle will handle it
                         except IndexError:
                             return
-                await self.day_notification(
-                    f"- The town lynched **{player.member.mention}**({player})"
-                )
+                await self.day_notification()
                 await player.member.remove_roles(self._alive_game_role)
                 await self.dead_chat.set_permissions(player.member, read_messages=True)
 
