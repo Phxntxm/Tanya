@@ -108,7 +108,7 @@ class MafiaGame:
 
     async def day_notification(self, *deaths: Player):
         """Creates a notification image with all of todays notifications"""
-        buffer = await self.ctx.bot.create_day_image(list(deaths))
+        buffer = await self.ctx.bot.create_day_image(self, list(deaths))
         await self.info.send(file=discord.File(buffer, filename="day.png"))
 
     def check_winner(self) -> bool:
