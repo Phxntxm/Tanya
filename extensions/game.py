@@ -730,11 +730,11 @@ class MafiaGame:
         # task = self.ctx.create_task()
 
         for player, msg in killed.items():
-            await self.channel.send(msg)
+            await self.chat.send(msg)
             # Give a bit of a pause for people to digest information
             await asyncio.sleep(2)
         else:
-            await self.channel.send("No one died last night!")
+            await self.chat.send("No one died last night!")
 
         # f = await task
         # await self.info.send(file=f)
