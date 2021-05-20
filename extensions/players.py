@@ -3,10 +3,12 @@ import typing
 
 import discord
 from discord.ext import commands
+from . import imaging
 
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
     from extensions.roles import Role, AttackType, DefenseType
+    from PIL.Image import Image
 
 
 class Player:
@@ -33,6 +35,7 @@ class Player:
         self.member = discord_member
         self.ctx = ctx
         self.role = role
+        self.avatar: typing.Optional[Image] = None
 
     def __str__(self) -> str:
         return str(self.role)
@@ -149,6 +152,10 @@ class Player:
 
         raise commands.BadArgument(f"Could not find a role named {arg}")
 
+    async def _ensure_avatar(self):
+        if self.avatar is None:
+            self.avatar = await imaging.round_avatar(self.member)
+
     async def wait_for_player(
         self,
         game: MafiaGame,
@@ -195,12 +202,15 @@ class Player:
             )
 
     async def day_task(self, game: MafiaGame):
+        await self._ensure_avatar()
         await self.role.day_task(game, self)
 
     async def night_task(self, game: MafiaGame):
+        await self._ensure_avatar()
         await self.role.night_task(game, self)
 
     async def post_night_task(self, game: MafiaGame):
+        await self._ensure_avatar()
         await self.role.post_night_task(game, self)
 
 

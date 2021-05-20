@@ -24,7 +24,7 @@ class Bot(commands.Bot):
 bot = Bot(
     command_prefix=commands.when_mentioned_or(">>"),
     intents=intents,
-    owner_ids=[115997555619266561, 204306127838642176],
+    #owner_ids=[115997555619266561, 204306127838642176],
     help_command=commands.DefaultHelpCommand(
         command_attrs={"name": "commands", "aliases": ["command"]}
     ),
@@ -34,5 +34,6 @@ bot = Bot(
 for ext in glob("extensions/*.py"):
     bot.load_extension(ext.replace("/", ".")[:-3])
 
+bot.load_extension("jishaku")
 
 bot.run(config.token)
