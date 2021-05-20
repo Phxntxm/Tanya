@@ -29,6 +29,7 @@ default_role_disabled_overwrites = discord.PermissionOverwrite(
 bot_overwrites = discord.PermissionOverwrite(
     read_messages=True,
     send_messages=True,
+    attach_files=True,
     add_reactions=True,
 )
 user_overwrites = discord.PermissionOverwrite(read_messages=True)

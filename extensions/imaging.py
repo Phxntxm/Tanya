@@ -66,8 +66,7 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
     raster.text((30, 260), f"Alive Players", font=font_28days_subtitle,) # noqa
     spe = 105
     col_width = 400
-    row = 0
-    col = 0
+    row = col = 0
 
     def paste_avatar(player, text_fill, do_x, show_role):
         nonlocal col, row
@@ -82,7 +81,7 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
         if len(nick) >= 17:
             nick = nick[:17] + "..."
         if show_role:
-            nick += f"\n\t{player.role.__class__.__name__}"
+            nick += f"\n\t{player.role}"
             t = (x[2] + 20, int(330 + (spe * row)))
         else:
             _, _h = raster.textsize(nick, font=font_vermillion)
@@ -96,17 +95,11 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
 
     if deaths:
         for p in deaths:
-            if col >= 1 and 3 > row > 0:
-                fill = "black"
-            else:
-                fill = "white"
+            fill = "black" if col >= 1 and 3 > row > 0 else "white"
             paste_avatar(p, fill, True, True)
 
     for p in alive:
-        if col >= 1 and 3 > row > 0:
-            fill = "black"
-        else:
-            fill = "white"
+        fill = "black" if col >= 1 and 3 > row > 0 else "white"
         paste_avatar(p, fill, False, False)
 
     if dead:
@@ -114,12 +107,9 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
             col += 1
             row = 0
 
-        raster.text((30+(col*col_width), 260), f"Dead Players", font=font_28days_subtitle, fill="black")  # noqa
+        raster.text((30+(col*col_width), 260), f"Dead Players", font=font_28days_subtitle, fill="black")
         for p in dead:
-            if (col >= 1 and row == 2) or (col == 3 and (row == 0 or row == 2)):
-                fill = "black"
-            else:
-                fill = "white"
+            fill = "black" if (col >= 1 and row == 2) or (col == 3 and (row == 0 or row == 2)) else "white"
             paste_avatar(p, fill, True, True)
 
     buf = io.BytesIO()
