@@ -44,6 +44,8 @@ async def round_avatar(member: discord.Member, rad=64) -> Image:
     return add_corners(Image.open(pfp, formats=("png",)), rad)
 
 async def create_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -> io.BytesIO:
+    for p in game.players:
+        await p._ensure_avatar() # noqa
     return await game.ctx.bot.loop.run_in_executor(pool, _sync_make_day_image, game, deaths)
 
 async def create_night_image(game: MafiaGame) -> io.BytesIO:
@@ -59,34 +61,34 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
     raster = ImageDraw.Draw(base)
     alive = list(filter(lambda player: not player.dead, game.players))
     dead = list(filter(lambda player: player.dead and player not in deaths, game.players))
-    _w, _h = raster.textsize(f"Day {game._day}", font=font_28days_title)
-    raster.text(((1920-_w)/2, 30), f"Day {game._day}", font=font_28days_title, fill="black") # noqa
+    __w, _ = raster.textsize(f"Day {game._day}", font=font_28days_title) # noqa
+    raster.text(((1920-__w)/2, 30), f"Day {game._day}", font=font_28days_title, fill="black") # noqa
     raster.text((30, 260), f"Alive Players", font=font_28days_subtitle,) # noqa
     spe = 105
     col_width = 400
     row = 0
     col = 0
 
-    def paste_avatar(p, fill, do_x, show_role):
+    def paste_avatar(player, text_fill, do_x, show_role):
         nonlocal col, row
-        avy = p.avatar
+        avy = player.avatar
         x = (30 + (col * col_width), int(330 + (spe * row)), 30 + avy.size[0] + (col * col_width),
              int(330 + (spe * row) + avy.size[1]))
         print(x, avy.mode, base.mode, base.getbbox(), avy.getbbox())
         base.paste(avy, x, mask=avy)
         if do_x:
             base.paste(death_marker, x, mask=death_marker)
-        nick = f"{f'{p.member.nick} ' if p.member.nick else ''}{f'({p.member.name})' if p.member.nick else p.member.name}"
+        nick = f"{f'{player.member.nick} ' if player.member.nick else ''}{f'({player.member.name})' if player.member.nick else player.member.name}"
         if len(nick) >= 17:
             nick = nick[:17] + "..."
         if show_role:
-            nick += f"\n\t{p.role.__class__.__name__}"
+            nick += f"\n\t{player.role.__class__.__name__}"
             t = (x[2] + 20, int(330 + (spe * row)))
         else:
             _, _h = raster.textsize(nick, font=font_vermillion)
             t = (x[2] + 20, int(330 + (spe * row) + (_h / 2)))
 
-        raster.text(t, nick, font=font_vermillion, fill=fill)
+        raster.text(t, nick, font=font_vermillion, fill=text_fill)
         row += 1
         if row >= 7:
             row = 0
