@@ -530,12 +530,12 @@ class MafiaGame:
 
     async def lock_mafia_channel(self):
         await self.mafia_chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=cannot_send_overwrites
+            self._alive_game_role, overwrite=cannot_send_overwrites
         )
 
     async def unlock_mafia_channel(self):
         await self.mafia_chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=can_send_overwrites
+            self._alive_game_role, overwrite=can_send_overwrites
         )
 
     # Pre game entry methods
