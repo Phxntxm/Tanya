@@ -16,7 +16,6 @@ class Player:
 
     # Players that affect this player
     attacked_by: typing.Optional[Player] = None
-    visited_by: typing.List[Player] = []
     protected_by: typing.Optional[Player] = None
     cleaned_by: typing.Optional[Player] = None
     disguised_as: typing.Optional[Player] = None
@@ -33,6 +32,7 @@ class Player:
         self.member = discord_member
         self.ctx = ctx
         self.role = role
+        self.visited_by: typing.List[Player] = []
 
     def __str__(self) -> str:
         return str(self.role)
