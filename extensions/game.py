@@ -665,13 +665,17 @@ class MafiaGame:
         if self.check_winner():
             return
         await self._day_discussion_phase()
+        # We'll cycle nomination -> voting up to three times
+        # if no one gets nominated, or a vote is successful we'll break out
         for _ in range(3):
             nominated = await self._day_nomination_phase()
             if nominated is None:
                 break
 
             await self._day_defense_phase(nominated)
-            await self._day_vote_phase(nominated)
+            # If vote went through don't allow more nominations
+            if await self._day_vote_phase(nominated):
+                break
             if self.check_winner():
                 return
 
@@ -777,7 +781,7 @@ class MafiaGame:
     async def _day_defense_phase(self, player: Player):
         """Handles the defense of a player phase"""
         await self.lock_chat_channel()
-        await self.unlock_chat_channel(player)
+        await self.unlock_chat_channel(player.member)
         await self.chat.send(f"What is your defense {player.member.mention}?")
         await asyncio.sleep(30)
 
@@ -833,10 +837,12 @@ class MafiaGame:
             await self.dead_chat.set_permissions(
                 player.member, read_messages=True, send_messages=True
             )
+            return True
         else:
             await self.chat.send(
                 f"{player.member.mention} has been spared! Votes {guilty_votes} to {innocent_votes}"
             )
+            return False
 
     async def _night_phase(self):
         await self.night_notification()
