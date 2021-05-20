@@ -667,6 +667,11 @@ class MafiaGame:
             await asyncio.sleep(20)
             return
 
+        # Start everyones day tasks
+        tasks = [
+            self.ctx.create_task(p.day_task(self)) for p in self.players if not p.dead
+        ]
+
         await self._day_notify_of_night_phase()
         if self.check_winner():
             return
@@ -684,6 +689,10 @@ class MafiaGame:
                 break
             if self.check_winner():
                 return
+
+        for task in tasks:
+            if not task.done():
+                task.cancel()
 
     async def _day_notify_of_night_phase(self):
         """Handles notification of what happened during the night"""
@@ -707,7 +716,7 @@ class MafiaGame:
                 # If the killer was mafia, we also want to notify them of the saving
                 if killer.is_mafia:
                     await self.mafia_chat.send(
-                        "{player} was saved last night from your attack!"
+                        f"{player.member.name} was saved last night from your attack!"
                     )
                 continue
 
@@ -748,7 +757,8 @@ class MafiaGame:
             await self.chat.send(msg)
             # Give a bit of a pause for people to digest information
             await asyncio.sleep(2)
-        else:
+
+        if not killed:
             await self.chat.send("No one died last night!")
 
         # f = await task
@@ -795,6 +805,7 @@ class MafiaGame:
         await self.unlock_chat_channel(player.member)
         await self.chat.send(f"What is your defense {player.member.mention}?")
         await asyncio.sleep(30)
+        await self.unlock_chat_channel()
 
     async def _day_vote_phase(self, player: Player):
         """Handles the voting for a player"""
