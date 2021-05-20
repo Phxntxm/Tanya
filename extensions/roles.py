@@ -173,7 +173,7 @@ class Jailor(Citizen):
     defense_type = DefenseType.powerful
     short_description = "Jail someone to talk to them during the night"
     description = (
-        "Each night you can choose to jail one person, during that night they "
+        "Each day you can choose to jail one person, during that night they "
         "will be placed in a jail channel, everything you say in this channel will be sent "
         "to the jail, allowing you to converse with them without revealing your identity\n\n"
         "**You only have 3 jails total, use them wisely**"
