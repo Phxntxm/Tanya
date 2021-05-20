@@ -334,7 +334,6 @@ class MafiaGame:
                 self.ctx.guild.default_role: everyone_overwrites,
                 self.ctx.guild.me: bot_overwrites,
                 self._alive_game_role: can_send_overwrites,
-                self._alive_game_role: False,
                 p.member: can_read_overwrites,
             }
             # Create their channel
