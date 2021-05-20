@@ -438,12 +438,17 @@ class Executioner(Independent):
     id = 152
     limit = 1
     target = None
+    defense_type = DefenseType.basic
     short_description = "Your goal is to get your target lynched"
     description = (
         "Your win condition is getting a certain player lynched. If they "
         "die without getting lynched, you become a Jester. Your goal is to then get "
         "lynched yourself"
     )
+
+    def night_task(self, game: MafiaGame, player: Player) -> None:
+        # We have permanent basic defense, according to ToS
+        player.protected_by = player
 
     def startup_channel_message(self, game: MafiaGame, player: Player):
         self.target = random.choice([p for p in game.players if p.is_citizen])
