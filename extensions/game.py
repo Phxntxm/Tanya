@@ -24,6 +24,12 @@ everyone_overwrites = discord.PermissionOverwrite(
     attach_files=False,
     add_reactions=False,
 )
+spectating_overwrites = discord.PermissionOverwrite(
+    read_messages=True,
+    send_messages=False,
+    attach_files=False,
+    add_reactions=False,
+)
 bot_overwrites = discord.PermissionOverwrite(
     read_messages=True,
     send_messages=True,
@@ -215,17 +221,17 @@ class MafiaGame:
     async def _setup_category_channels(self, category: discord.CategoryChannel):
         # Setup all the overwrites needed
         info_overwrites = {
-            self.ctx.guild.default_role: everyone_overwrites,
+            self.ctx.guild.default_role: spectating_overwrites,
             self.ctx.guild.me: bot_overwrites,
             self._alive_game_role: cannot_send_overwrites,
         }
         chat_overwrites = {
-            self.ctx.guild.default_role: everyone_overwrites,
+            self.ctx.guild.default_role: spectating_overwrites,
             self.ctx.guild.me: bot_overwrites,
             self._alive_game_role: can_send_overwrites,
         }
         dead_overwrites = {
-            self.ctx.guild.default_role: everyone_overwrites,
+            self.ctx.guild.default_role: spectating_overwrites,
             self.ctx.guild.me: bot_overwrites,
         }
         mafia_overwrites = {
@@ -721,7 +727,9 @@ class MafiaGame:
 
             # Remove their alive role and let them see dead chat
             await player.member.remove_roles(self._alive_game_role)
-            await self.dead_chat.set_permissions(player.member, read_messages=True)
+            await self.dead_chat.set_permissions(
+                player.member, read_messages=True, send_messages=True
+            )
             # Now if they were godfather, choose new godfather
             if player.is_godfather:
                 await self.choose_godfather()
