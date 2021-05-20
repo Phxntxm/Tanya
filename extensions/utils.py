@@ -171,6 +171,7 @@ def nomination_check(game: MafiaGame, nominations: dict) -> typing.Callable:
                 return False
             # Set their nomination
             nominations[nominator] = player
+            game.ctx.create_task(m.add_reaction("\N{THUMBS UP SIGN}"))
             return False
 
     return check

@@ -677,6 +677,8 @@ class MafiaGame:
 
     async def _day_notify_of_night_phase(self):
         """Handles notification of what happened during the night"""
+        killed = {}
+
         for player in self.players:
             killer = player.attacked_by
             cleaner = player.cleaned_by
@@ -710,7 +712,9 @@ class MafiaGame:
                 msg = "f{player.member.mention} ({player}) suicided during the night!"
             else:
                 msg = killer.attack_message.format(killer=killer, killed=player)
-            await self.chat.send(msg)
+
+            killed[player] = msg
+
             # Remove their alive role and let them see dead chat
             await player.member.remove_roles(self._alive_game_role)
             await self.dead_chat.set_permissions(player.member, read_messages=True)
@@ -721,14 +725,25 @@ class MafiaGame:
             # If they had an executionor targetting them, they become a jester
             if player.executionor_target and not player.executionor_target.dead:
                 player.executionor_target.role = self.ctx.bot.role_mapping["Jester"]()
+
+        # This is where we'll send the day notification
+        # task = self.ctx.create_task()
+
+        for player, msg in killed.items():
+            await self.channel.send(msg)
             # Give a bit of a pause for people to digest information
-            await asyncio.sleep(3)
+            await asyncio.sleep(2)
+        else:
+            await self.channel.send("No one died last night!")
+
+        # f = await task
+        # await self.info.send(file=f)
 
     async def _day_discussion_phase(self):
         """Handles the discussion phase of the day"""
         await self.unlock_chat_channel()
         await self.chat.send(
-            "Discuss! You have 45 seconds before nomination will start"
+            "Discussion time! You have 45 seconds before nomination will start"
         )
         await asyncio.sleep(45)
 
