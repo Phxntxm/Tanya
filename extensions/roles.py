@@ -430,7 +430,7 @@ class Jester(Independent):
 
     def win_condition(self, game: MafiaGame, player: Player):
         return player.lynched or (
-            player.dead and player.killed_by and not player.killed_by.is_mafia
+            player.dead and player.attacked_by and not player.attacked_by.is_mafia
         )
 
 
