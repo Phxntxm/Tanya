@@ -67,47 +67,45 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
     row = 0
     col = 0
 
+    def paste_avatar(p, fill, do_x, show_role):
+        nonlocal col, row
+        avy = p.avatar
+        x = (30 + (col * col_width), int(330 + (spe * row)), 30 + avy.size[0] + (col * col_width),
+             int(330 + (spe * row) + avy.size[1]))
+        print(x, avy.mode, base.mode, base.getbbox(), avy.getbbox())
+        base.paste(avy, x, mask=avy)
+        if do_x:
+            base.paste(death_marker, x, mask=death_marker)
+        nick = f"{f'{p.member.nick} ' if p.member.nick else ''}{f'({p.member.name})' if p.member.nick else p.member.name}"
+        if len(nick) >= 17:
+            nick = nick[:17] + "..."
+        if show_role:
+            nick += f"\n\t{p.role.__class__.__name__}"
+            t = (x[2] + 20, int(330 + (spe * row)))
+        else:
+            _, _h = raster.textsize(nick, font=font_vermillion)
+            t = (x[2] + 20, int(330 + (spe * row) + (_h / 2)))
+
+        raster.text(t, nick, font=font_vermillion, fill=fill)
+        row += 1
+        if row >= 7:
+            row = 0
+            col += 1
+
     if deaths:
         for p in deaths:
             if col >= 1 and 3 > row > 0:
                 fill = "black"
             else:
                 fill = "white"
-            avy = p.avatar
-            x = (30+(col*col_width), int(330 + (spe * row)), 30 + avy.size[0] + (col*col_width), int(330 + (spe * row) + avy.size[1]))
-            print(x, avy.mode, base.mode, base.getbbox(), avy.getbbox())
-            base.paste(avy, x, mask=avy.convert("RGBA"))
-            base.paste(death_marker, x, mask=death_marker)
-            nick = f"{f'{p.member.nick} ' if p.member.nick else ''}{f'({p.member.name})' if p.member.nick else p.member.name}"
-            if len(nick) >= 20:
-                nick = nick[:17] + "..."
-            nick += f"\n\t{p.role.__class__.__name__}"
-            _W, _h = raster.textsize(nick, font=font_vermillion)
-            raster.text((x[2]+20, int(330 + (spe * row))), nick, font=font_vermillion, fill=fill)
-            row += 1
-            if row >= 7:
-                row = 0
-                col += 1
+            paste_avatar(p, fill, True, True)
 
     for p in alive:
         if col >= 1 and 3 > row > 0:
             fill = "black"
         else:
             fill = "white"
-        avy = p.avatar
-        x = (30 + (col * col_width), int(330 + (spe * row)), 30 + avy.size[0] + (col * col_width),
-             int(330 + (spe * row) + avy.size[1]))
-        print(x, avy.mode, base.mode, base.getbbox(), avy.getbbox())
-        base.paste(avy, x, mask=avy)
-        nick = f"{f'{p.member.nick} ' if p.member.nick else ''}{f'({p.member.name})' if p.member.nick else p.member.name}"
-        if len(nick) >= 20:
-            nick = nick[:17] + "..."
-        _W, _h = raster.textsize(nick, font=font_vermillion)
-        raster.text((x[2] + 20, int(330 + (spe * row)) + (_h / 2)), nick, font=font_vermillion, fill=fill)
-        row += 1
-        if row >= 7:
-            row = 0
-            col += 1
+        paste_avatar(p, fill, False, False)
 
     if dead:
         if row:
@@ -120,21 +118,7 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
                 fill = "black"
             else:
                 fill = "white"
-            avy = p.avatar
-            x = (30+(col*col_width), int(330 + (spe * row)), 30 + avy.size[0] + (col*col_width), int(330 + (spe * row) + avy.size[1]))
-            print(x, avy.mode, base.mode, base.getbbox(), avy.getbbox())
-            base.paste(avy, x, mask=avy)
-            base.paste(death_marker, x, mask=death_marker)
-            nick = f"{f'{p.member.nick} ' if p.member.nick else ''}{f'({p.member.name})' if p.member.nick else p.member.name}"
-            if len(nick) >= 18:
-                nick = nick[:17] + "..."
-            nick += f"\n\t{p.role.__class__.__name__}"
-            _W, _h = raster.textsize(nick, font=font_vermillion)
-            raster.text((x[2]+20, int(330 + (spe * row))), nick, font=font_vermillion, fill=fill)
-            row += 1
-            if row >= 7:
-                row = 0
-                col += 1
+            paste_avatar(p, fill, True, True)
 
     buf = io.BytesIO()
     base.save(buf, format="png")
