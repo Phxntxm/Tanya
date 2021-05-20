@@ -217,7 +217,7 @@ class MafiaGame:
         info_overwrites = {
             self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
-            self._alive_game_role: can_send_overwrites,
+            self._alive_game_role: cannot_send_overwrites,
         }
         chat_overwrites = {
             self.ctx.guild.default_role: everyone_overwrites,
