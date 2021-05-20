@@ -218,13 +218,11 @@ class MafiaGame:
             self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
             self._alive_game_role: can_send_overwrites,
-            self._alive_game_role: False,
         }
         chat_overwrites = {
             self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
             self._alive_game_role: can_send_overwrites,
-            self._alive_game_role: False,
         }
         dead_overwrites = {
             self.ctx.guild.default_role: everyone_overwrites,
@@ -234,13 +232,11 @@ class MafiaGame:
             self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
             self._alive_game_role: can_send_overwrites,
-            self._alive_game_role: False,
         }
         jail_overwrites = {
             self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
             self._alive_game_role: can_send_overwrites,
-            self._alive_game_role: False,
         }
 
         # Get each channel, if it exists edit... if not create
