@@ -633,15 +633,17 @@ class MafiaGame:
         msg = "\n".join(
             f"{player.member.mention} ({player})" for player in self.players
         )
-        await self.ctx.send(msg, allowed_mentions=AllowedMentions(users=False))
+        await self.ctx.send(
+            f"The game is over! Roles were:\n{msg}",
+            allowed_mentions=AllowedMentions(users=False),
+        )
         await asyncio.sleep(60)
         await self.cleanup()
 
     async def _cycle(self) -> bool:
         """Performs one cycle of day/night"""
         # Do day tasks and check for winner
-        if self._day > 1:
-            await self._day_phase()
+        await self._day_phase()
         if self.check_winner():
             return True
         self._day += 1
@@ -653,6 +655,12 @@ class MafiaGame:
         return False
 
     async def _day_phase(self):
+        if self._day == 1:
+            await asyncio.sleep(10)
+            await self.chat.send("Day is ending in 20 seconds")
+            await asyncio.sleep(20)
+            return
+
         await self._day_notify_of_night_phase()
         if self.check_winner():
             return
