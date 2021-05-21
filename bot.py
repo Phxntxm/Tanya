@@ -12,7 +12,7 @@ intents = discord.Intents(
 
 
 class Bot(commands.Bot):
-    error_channel = 840770815498649660
+    error_channel = config.error_channel_id
 
     async def get_context(self, message, *, cls=commands.Context):
         if hasattr(self, "custom_context"):
@@ -22,9 +22,9 @@ class Bot(commands.Bot):
 
 
 bot = Bot(
-    command_prefix=commands.when_mentioned_or(">>"),
+    command_prefix=commands.when_mentioned_or(config.prefix),
     intents=intents,
-    owner_ids=[115997555619266561, 204306127838642176],
+    owner_ids=config.owner_ids,
     help_command=commands.DefaultHelpCommand(
         command_attrs={"name": "commands", "aliases": ["command"]}
     ),
