@@ -1,8 +1,11 @@
+import multiprocessing
 import discord
 from discord.ext import commands
 from glob import glob
 
 import config
+
+multiprocessing.set_start_method("forkserver")
 
 intents = discord.Intents(
     guild_messages=True,

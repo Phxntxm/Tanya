@@ -149,10 +149,6 @@ class Player:
 
         raise commands.BadArgument(f"Could not find a role named {arg}")
 
-    async def _ensure_avatar(self):
-        if self.avatar is None:
-            self.avatar = await imaging.round_avatar(self.member)
-
     async def wait_for_player(
         self,
         game: MafiaGame,
@@ -199,15 +195,12 @@ class Player:
             )
 
     async def day_task(self, game: MafiaGame):
-        await self._ensure_avatar()
         await self.role.day_task(game, self)
 
     async def night_task(self, game: MafiaGame):
-        await self._ensure_avatar()
         await self.role.night_task(game, self)
 
     async def post_night_task(self, game: MafiaGame):
-        await self._ensure_avatar()
         await self.role.post_night_task(game, self)
 
 

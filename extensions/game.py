@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import math
+import collections
 import random
 import typing
 
@@ -102,15 +103,9 @@ class MafiaGame:
     # Notification methods
 
     async def night_notification(self):
-        embed = discord.Embed(
-            title=f"Night {self._day - 1}",
-            description="Check your private channels",
-            colour=0x0A0A86,
-        )
-        embed.set_thumbnail(
-            url="https://www.jing.fm/clipimg/full/132-1327252_half-moon-png-images-moon-clipart-png.png"
-        )
-        await self.chat.send(content=self._alive_game_role.mention, embed=embed)
+        async with self.chat.typing():
+            buffer = await self.ctx.bot.create_night_image(self)
+            await self.chat.send(file=discord.File(buffer, filename="night.png"))
 
     async def day_notification(self, *deaths: Player):
         """Creates a notification image with all of todays notifications"""
@@ -935,6 +930,7 @@ class MafiaGame:
     # Cleanup
 
     async def cleanup(self):
+        self.ctx.bot.cleanup_imaging(self)
         for player in self.players:
             await player.member.remove_roles(self._alive_game_role)
 
