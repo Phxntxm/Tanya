@@ -14,7 +14,8 @@ class Miscellaneous(commands.Cog):
             description="Welcome to Tanya Degurechaff, a customizable bot for Mafia type games. "
             "This bot emulates the mafia style game, similar to Town of Salem but *does* take some liberties to change some things."
             "\n\nIn order to start a game, simply use `>>mafia start`. If you want to see some information on the roles available, "
-            "run `>>mafia roles`. If you want to see information on a specific role run `>>mafia role Doctor` for example.",
+            "run `>>mafia roles`. If you want to see information on a specific role run `>>mafia role Doctor` for example."
+            "To view all available commands, run `>>commands`.",
             color=0xFF0000,
             timestamp=datetime.utcnow(),
         )
