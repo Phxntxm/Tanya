@@ -42,15 +42,18 @@ async def serialize_game(g: MafiaGame, include_avatars=False) -> dict:
 
 class GameProcessor(multiprocessing.Process):
     def run(self) -> None:
-        recv, send = self._args # type: multiprocessing.connection.PipeConnection
+        print("daemon start")
+        pipe = self._args[0] # type: multiprocessing.connection.PipeConnection
         avatars = {}
-        data: dict = recv.recv()
+        print("waiting")
+        data: dict = pipe.recv()
+        print("received")
         game: dict = data['g']
         for player in game['p']:
             avatars[player['i']] = round_avatar(player['a'])
 
         while True:
-            d = recv.recv()
+            d = pipe.recv()
             if d['op'] == 0:
                 resp = _sync_make_night_image(d['d'])
             elif d['op'] == 1:
@@ -60,7 +63,7 @@ class GameProcessor(multiprocessing.Process):
             else:
                 raise RuntimeError("unknown opcode")
 
-            send.send(resp)
+            pipe.send(resp)
 
 def add_corners(im, rad):
     if im.size != (128, 128):
@@ -80,40 +83,38 @@ def add_corners(im, rad):
     im.putalpha(alpha)
     return im.resize((96,96))
 
-async def round_avatar(avy: io.BytesIO, rad=64) -> Image:
+def round_avatar(avy: io.BytesIO, rad=64) -> Image:
     return add_corners(Image.open(avy, formats=("png",)), rad)
 
 async def create_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -> io.BytesIO:
     if id(game) not in processes:
-        send, recv = multiprocessing.Pipe(True)
-        processes[id(game)] = proc = GameProcessor(args=(send, recv))
+        parent, child = multiprocessing.Pipe(True)
+        processes[id(game)] = proc = GameProcessor(args=(child,))
         proc.start()
-        proc.send = send
-        proc.recv = recv
-        send.send({"g": serialize_game(game, include_avatars=True)})
-        send.send({"op": 1, "g": {}, "d": [x.member.id for x in deaths]})
+        proc.pipe = parent
+        parent.send({"g": await serialize_game(game, include_avatars=True)})
+        parent.send({"op": 1, "g": {}, "d": [x.member.id for x in deaths]})
 
     else:
         proc = processes[id(game)]
-        proc.send.send({"op": 1, "d": [x.member.id for x in deaths], "g": serialize_game(game, include_avatars=False)})
+        proc.pipe.send({"op": 1, "d": [x.member.id for x in deaths], "g": await serialize_game(game, include_avatars=False)})
 
-    return await game.ctx.bot.loop.run_in_executor(None, proc.recv.recv())
+    return await game.ctx.bot.loop.run_in_executor(None, proc.pipe.recv)
 
 async def create_night_image(game: MafiaGame) -> io.BytesIO:
     if id(game) not in processes:
-        send, recv = multiprocessing.Pipe(True)
-        processes[id(game)] = proc = GameProcessor(args=(send, recv))
+        parent, child = multiprocessing.Pipe(True)
+        processes[id(game)] = proc = GameProcessor(args=(child,))
         proc.start()
-        proc.send = send
-        proc.recv = recv
-        send.send({"g": serialize_game(game, include_avatars=True)})
-        send.send({"op": 0, "g": {}})
+        proc.pipe = parent
+        parent.send({"g": await serialize_game(game, include_avatars=True)})
+        parent.send({"op": 1, "g": {}})
 
     else:
         proc = processes[id(game)]
-        proc.send.send({"op": 0, "g": serialize_game(game, False)})
+        proc.pipe.send({"op": 0, "g": serialize_game(game, False)})
 
-    return await game.ctx.bot.loop.run_in_executor(None, proc.recv.recv())
+    return await game.ctx.bot.loop.run_in_executor(None, proc.pipe.recv)
 
 def _sync_make_night_image(night: int) -> io.BytesIO:
     base: Image.Image = Image.open("./resources/background-night.png", formats=("png",))
@@ -168,7 +169,7 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
             col += 1
 
     if deaths:
-        d = [discord.utils.find(lambda p: p['i'] == x, players) for x in deaths]
+        d = [discord.utils.find(lambda p: p['i'] == x, game['p']) for x in deaths]
         for p in d:
             fill = "black" if col >= 1 and 3 > row > 0 else "white"
             paste_avatar(p, fill, True, True)

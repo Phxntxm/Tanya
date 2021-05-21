@@ -5,8 +5,6 @@ from glob import glob
 
 import config
 
-multiprocessing.set_start_method("forkserver")
-
 intents = discord.Intents(
     guild_messages=True,
     guild_reactions=True,
@@ -33,10 +31,10 @@ bot = Bot(
     ),
 )
 
+if __name__ == "__main__":
+    for ext in glob("extensions/*.py"):
+        bot.load_extension(ext.replace("/", ".")[:-3])
 
-for ext in glob("extensions/*.py"):
-    bot.load_extension(ext.replace("/", ".")[:-3])
+#    bot.load_extension("jishaku")
 
-#bot.load_extension("jishaku")
-
-bot.run(config.token)
+    bot.run(config.token)
