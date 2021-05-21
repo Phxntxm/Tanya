@@ -394,6 +394,7 @@ class Survivor(Independent):
         "You must survive, each night you have the choice to use a bulletproof "
         "vest which will save you from a basic attack. You only have 4 vests"
     )
+    save_message = "Your vest saved you!"
 
     def win_condition(self, game: MafiaGame, player: Player) -> bool:
         return not player.dead
@@ -445,8 +446,9 @@ class Executioner(Independent):
         "die without getting lynched, you become a Jester. Your goal is to then get "
         "lynched yourself"
     )
+    save_message = "You were attacked, but your defense is too strong!"
 
-    def night_task(self, game: MafiaGame, player: Player) -> None:
+    async def night_task(self, game: MafiaGame, player: Player) -> None:
         # We have permanent basic defense, according to ToS
         player.protected_by = player
 
@@ -472,6 +474,7 @@ class Arsonist(Independent):
     attack_message = (
         "{killed.member.name} ({killed}) has been set ablaze by the Arsonist!"
     )
+    save_message = "You were attacked, but your defense is too strong!"
 
     async def night_task(self, game: MafiaGame, player: Player):
         # We have permanent basic defense, according to ToS
