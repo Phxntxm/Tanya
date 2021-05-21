@@ -46,14 +46,24 @@ async def round_avatar(member: discord.Member, rad=64) -> Image:
 async def create_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -> io.BytesIO:
     for p in game.players:
         await p._ensure_avatar() # noqa
+
     return await game.ctx.bot.loop.run_in_executor(pool, _sync_make_day_image, game, deaths)
 
 async def create_night_image(game: MafiaGame) -> io.BytesIO:
-    pass
+    return await game.ctx.bot.loop.run_in_executor(pool, _sync_make_night_image, game)
+
 
 def _sync_make_night_image(game: MafiaGame) -> io.BytesIO:
     base: Image.Image = Image.open("./resources/background-night.png", formats=("png",))
     base = base.resize((1920, 1080))
+    raster = ImageDraw.Draw(base)
+    raster.text(((1920-__w)/2, 30), f"Day {game._day}", font=font_28days_title, fill="black") # noqa
+
+    buf = io.BytesIO()
+    base.save(buf, format="png")
+    buf.seek(0)
+    base.close()
+    return buf
 
 def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -> io.BytesIO:
     base: Image.Image = Image.open("./resources/background-day.png", formats=("png",))
@@ -73,16 +83,18 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
         avy = player.avatar
         x = (30 + (col * col_width), int(330 + (spe * row)), 30 + avy.size[0] + (col * col_width),
              int(330 + (spe * row) + avy.size[1]))
-        print(x, avy.mode, base.mode, base.getbbox(), avy.getbbox())
         base.paste(avy, x, mask=avy)
         if do_x:
             base.paste(death_marker, x, mask=death_marker)
+
         nick = f"{f'{player.member.nick} ' if player.member.nick else ''}{f'({player.member.name})' if player.member.nick else player.member.name}"
         if len(nick) >= 17:
             nick = nick[:17] + "..."
+
         if show_role:
             nick += f"\n\t{player.role}"
             t = (x[2] + 20, int(330 + (spe * row)))
+
         else:
             _, _h = raster.textsize(nick, font=font_vermillion)
             t = (x[2] + 20, int(330 + (spe * row) + (_h / 2)))
@@ -117,7 +129,6 @@ def _sync_make_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -
     buf.seek(0)
     base.close()
     return buf
-
 
 def setup(bot):
     bot.create_day_image = create_day_image
