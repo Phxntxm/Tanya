@@ -3,12 +3,10 @@ import typing
 
 import discord
 from discord.ext import commands
-from . import imaging
 
 if typing.TYPE_CHECKING:
     from extensions.game import MafiaGame
     from extensions.roles import Role, AttackType, DefenseType
-    from PIL.Image import Image
 
 
 class Player:
@@ -17,8 +15,7 @@ class Player:
     dead: bool = False
 
     # Players that affect this player
-    killed_by: typing.Optional[Player] = None
-    visited_by: typing.List[Player] = None
+    attacked_by: typing.Optional[Player] = None
     protected_by: typing.Optional[Player] = None
     cleaned_by: typing.Optional[Player] = None
     disguised_as: typing.Optional[Player] = None
@@ -35,7 +32,7 @@ class Player:
         self.member = discord_member
         self.ctx = ctx
         self.role = role
-        self.avatar: typing.Optional[Image] = None
+        self.visited_by: typing.List[Player] = []
 
     def __str__(self) -> str:
         return str(self.role)
@@ -109,7 +106,7 @@ class Player:
 
     def cleanup_attrs(self):
         self.visited_by = []
-        self.killed_by = None
+        self.attacked_by = None
         self.protected_by = None
         self.night_role_blocked = False
         self.cleaned_by = None
@@ -125,7 +122,7 @@ class Player:
         self.visit(by)
 
     def kill(self, by: Player):
-        self.killed_by = by
+        self.attacked_by = by
         self.visit(by)
 
     def clean(self, by: Player):

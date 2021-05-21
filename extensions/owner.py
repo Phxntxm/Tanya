@@ -229,41 +229,43 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
         await ctx.send("Just changed my status to '{}'!".format(status))
 
     @commands.command()
-    async def load(self, ctx, *, module: str):
+    async def load(self, ctx, *modules: str):
         """Loads a module"""
 
-        # Do this because I'm too lazy to type cogs.module
-        module = module.lower()
-        if not module.startswith("extensions"):
-            module = "extensions.{}".format(module)
+        for ext in modules:
+            # Do this because I'm too lazy to type extensions.module
+            ext = ext.lower()
+            if not ext.startswith("extensions"):
+                ext = "extensions.{}".format(ext)
 
-        # This try catch will catch errors such as syntax errors in the module we are loading
-        ctx.bot.load_extension(module)
-        await ctx.send(f"I have just loaded the {module} module")
+            ctx.bot.load_extension(ext)
+        await ctx.send(f"I have just loaded the module(s): {', '.join(modules)}")
 
     @commands.command()
-    async def unload(self, ctx, *, module: str):
+    async def unload(self, ctx, *modules: str):
         """Unloads a module"""
 
-        # Do this because I'm too lazy to type cogs.module
-        module = module.lower()
-        if not module.startswith("extensions"):
-            module = "extensions.{}".format(module)
+        for ext in modules:
+            # Do this because I'm too lazy to type extensions.module
+            ext = ext.lower()
+            if not ext.startswith("extensions"):
+                ext = "extensions.{}".format(ext)
 
-        ctx.bot.unload_extension(module)
-        await ctx.send(f"I have just unloaded the {module} module")
+            ctx.bot.unload_extension(ext)
+        await ctx.send(f"I have just unloaded the module(s): {', '.join(modules)}")
 
     @commands.command()
-    async def reload(self, ctx, *, module: str):
+    async def reload(self, ctx, *modules: str):
         """Reloads a module"""
 
-        # Do this because I'm too lazy to type cogs.module
-        module = module.lower()
-        if not module.startswith("extensions"):
-            module = "extensions.{}".format(module)
+        for ext in modules:
+            # Do this because I'm too lazy to type extensions.module
+            ext = ext.lower()
+            if not ext.startswith("extensions"):
+                ext = "extensions.{}".format(ext)
 
-        ctx.bot.reload_extension(module)
-        await ctx.send(f"I have just reloaded the {module} module")
+            ctx.bot.reload_extension(ext)
+        await ctx.send(f"I have just reloaded the module(s): {', '.join(modules)}")
 
 
 def setup(bot):

@@ -1,0 +1,5 @@
+token = ""
+discord_bots_gg = ""
+owner_ids = []
+prefix = "!"
+error_channel_id = 1

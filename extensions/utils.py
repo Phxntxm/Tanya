@@ -144,20 +144,10 @@ def min_max_check(ctx: commands.Context, min: int, max: int) -> typing.Callable:
     return check
 
 
-def nomination_check(
-    game: MafiaGame,
-    nominations: dict,
-    channel: discord.TextChannel,
-    mafia: bool = False,
-) -> typing.Callable:
-    if mafia:
-        noms_needed = 1 if game.total_mafia else 2
-    else:
-        noms_needed = 2
-
+def nomination_check(game: MafiaGame, nominations: dict) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Ignore if not in channel we want
-        if m.channel != channel:
+        if m.channel != game.chat:
             return False
         # Ignore if not player of game (admins, bots)
         if m.author not in [p.member for p in game.players]:
@@ -179,22 +169,10 @@ def nomination_check(
             # Check if dead
             if player.dead:
                 return False
-            # Don't let mafia get nominated during mafia nomination
-            if mafia and player.is_mafia:
-                return False
-            # Increment their nomination
-            nominations[player] = nominations.get(player, 0) + 1
-            # If their nomination meets what's needed, set the player
-            if nominations[player] == noms_needed:
-                nominations["nomination"] = player
-                return True
-            # Otherwise mention need one more
-            else:
-                game.ctx.create_task(
-                    m.channel.send(
-                        f"{player.member.display_name} nominated, need one more"
-                    )
-                )
+            # Set their nomination
+            nominations[nominator] = player
+            game.ctx.create_task(m.add_reaction("\N{THUMBS UP SIGN}"))
+            return False
 
     return check
 

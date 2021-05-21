@@ -2,27 +2,30 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
-from extensions.players import Player
-import discord
-from discord.mentions import AllowedMentions
+import math
 import random
 import typing
+
+import discord
+from discord.mentions import AllowedMentions
+
+from extensions.players import Player
 
 if typing.TYPE_CHECKING:
     from extensions import players as _players, utils
 
-
-default_role_overwrites = discord.PermissionOverwrite(
+can_send_overwrites = discord.PermissionOverwrite(send_messages=True)
+cannot_send_overwrites = discord.PermissionOverwrite(send_messages=False)
+can_read_overwrites = discord.PermissionOverwrite(read_messages=True)
+everyone_overwrites = discord.PermissionOverwrite(
     read_messages=False,
-    send_messages=True,
-    read_message_history=False,
+    send_messages=False,
     attach_files=False,
     add_reactions=False,
 )
-default_role_disabled_overwrites = discord.PermissionOverwrite(
-    read_messages=False,
+spectating_overwrites = discord.PermissionOverwrite(
+    read_messages=True,
     send_messages=False,
-    read_message_history=False,
     attach_files=False,
     add_reactions=False,
 )
@@ -32,7 +35,6 @@ bot_overwrites = discord.PermissionOverwrite(
     attach_files=True,
     add_reactions=True,
 )
-user_overwrites = discord.PermissionOverwrite(read_messages=True)
 
 
 @dataclasses.dataclass
@@ -42,6 +44,7 @@ class MafiaGameConfig:
     ctx: utils.CustomContext
     night_length: int = 90
     day_length: int = 120
+
 
 class MafiaGame:
     def __init__(self, ctx: utils.CustomContext, *, config: str):
@@ -96,6 +99,8 @@ class MafiaGame:
             if player.is_godfather and not player.dead:
                 return player
 
+    # Notification methods
+
     async def night_notification(self):
         embed = discord.Embed(
             title=f"Night {self._day - 1}",
@@ -112,6 +117,8 @@ class MafiaGame:
         async with self.info.typing():
             buffer = await self.ctx.bot.create_day_image(self, list(deaths))
             await self.info.send(file=discord.File(buffer, filename="day.png"))
+
+    # Winner methods
 
     def check_winner(self) -> bool:
         """Loops through all the winners and checks their win conditions"""
@@ -160,6 +167,8 @@ class MafiaGame:
             member = self._members.pop()
             self.players.append(player_cls(member, self.ctx, citizen_cls()))
 
+    # Channel setup methods
+
     async def _claim_category(self) -> typing.Any[discord.CategoryChannel, None]:
         """Loops through the categories available on the server, returning
         a category we can lay claim to and use for caching. If it doesn't
@@ -180,24 +189,28 @@ class MafiaGame:
     async def _setup_category_channels(self, category: discord.CategoryChannel):
         # Setup all the overwrites needed
         info_overwrites = {
-            self.ctx.guild.default_role: default_role_disabled_overwrites,
+            self.ctx.guild.default_role: spectating_overwrites,
             self.ctx.guild.me: bot_overwrites,
+            self._alive_game_role: cannot_send_overwrites,
         }
         chat_overwrites = {
-            self.ctx.guild.default_role: default_role_overwrites,
+            self.ctx.guild.default_role: spectating_overwrites,
             self.ctx.guild.me: bot_overwrites,
+            self._alive_game_role: can_send_overwrites,
         }
         dead_overwrites = {
-            self.ctx.guild.default_role: default_role_overwrites,
+            self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
         }
         mafia_overwrites = {
-            self.ctx.guild.default_role: default_role_overwrites,
+            self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
+            self._alive_game_role: can_send_overwrites,
         }
         jail_overwrites = {
-            self.ctx.guild.default_role: default_role_overwrites,
+            self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
+            self._alive_game_role: can_send_overwrites,
         }
 
         # Get each channel, if it exists edit... if not create
@@ -288,21 +301,25 @@ class MafiaGame:
             # Let them see the mafia channel if they're mafia
             if p.is_mafia:
                 await self.mafia_chat.set_permissions(
-                    p.member, overwrite=user_overwrites
+                    p.member, overwrite=can_read_overwrites
                 )
-            # Set access for info and chat
-            await self.info.set_permissions(p.member, overwrite=user_overwrites)
-            await self.chat.set_permissions(p.member, overwrite=user_overwrites)
             # Everyone has their own private channel, setup overwrites for them
             overwrites = {
-                self.ctx.guild.default_role: default_role_overwrites,
+                self.ctx.guild.default_role: everyone_overwrites,
                 self.ctx.guild.me: bot_overwrites,
-                p.member: user_overwrites,
+                self._alive_game_role: can_send_overwrites,
+                p.member: can_read_overwrites,
             }
             # Create their channel
             channel = await category.create_text_channel(
                 p.member.name, overwrites=overwrites
             )
+            # Allow them to see info and chat
+            await self.chat.set_permissions(p.member, read_messages=True)
+            await self.info.set_permissions(p.member, read_messages=True)
+            # If they're mafia let them see the mafia channel
+            if p.is_mafia:
+                await self.mafia_chat.set_permissions(p.member, read_messages=True)
             # Set it on the player object
             p.set_channel(channel)
             # Send them their startup message and pin it
@@ -473,31 +490,29 @@ class MafiaGame:
 
         return amount_of_specials
 
-    async def lock_chat_channel(self):
-        await self.chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=default_role_disabled_overwrites
-        )
+    # During game channel modification
 
-    async def unlock_chat_channel(self):
-        await self.chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=default_role_overwrites
-        )
+    async def lock_chat_channel(self, target: discord.Member = None):
+        if target is None:
+            target = self._alive_game_role
+        await self.chat.set_permissions(target, overwrite=cannot_send_overwrites)
+
+    async def unlock_chat_channel(self, target: discord.Member = None):
+        if target is None:
+            target = self._alive_game_role
+        await self.chat.set_permissions(target, overwrite=can_send_overwrites)
 
     async def lock_mafia_channel(self):
         await self.mafia_chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=default_role_disabled_overwrites
+            self._alive_game_role, overwrite=cannot_send_overwrites
         )
 
     async def unlock_mafia_channel(self):
         await self.mafia_chat.set_permissions(
-            self.ctx.guild.default_role, overwrite=default_role_overwrites
+            self._alive_game_role, overwrite=can_send_overwrites
         )
 
-    async def play(self):
-        """Handles the preparation and the playing of the game"""
-        await self._setup_config()
-        await self._game_preparation()
-        await self._start()
+    # Pre game entry methods
 
     async def _setup_config(self):
         """All the setup needed for the game to play"""
@@ -569,26 +584,7 @@ class MafiaGame:
         await self.lock_mafia_channel()
         # Now that everything is done unlock the channel
 
-    async def _cycle(self) -> bool:
-        """Performs one cycle of day/night"""
-        # Do day tasks and check for winner
-        await self.pre_day()
-        if self.check_winner():
-            return True
-        await self.day_tasks()
-        if self.check_winner():
-            return True
-        self._day += 1
-        # Do night tasks and check for winner
-        await self.night_tasks()
-        if self.check_winner():
-            return True
-
-        # Schedule all the post night tasks
-        for player in self.players:
-            self.ctx.create_task(player.post_night_task(self))
-
-        return False
+    # Day/Night cycles
 
     async def _start(self):
         """Play the game"""
@@ -611,11 +607,234 @@ class MafiaGame:
         msg = "\n".join(
             f"{player.member.mention} ({player})" for player in self.players
         )
-        await self.ctx.send(msg, allowed_mentions=AllowedMentions(users=False))
+        await self.ctx.send(
+            f"The game is over! Roles were:\n{msg}",
+            allowed_mentions=AllowedMentions(users=False),
+        )
         await asyncio.sleep(60)
         await self.cleanup()
 
-    async def night_tasks(self):
+    async def _cycle(self) -> bool:
+        """Performs one cycle of day/night"""
+        # Do day tasks and check for winner
+        await self._day_phase()
+        if self.check_winner():
+            return True
+        self._day += 1
+        # Then night tasks
+        await self._night_phase()
+        for player in self.players:
+            self.ctx.create_task(player.post_night_task(self))
+
+        return False
+
+    async def _day_phase(self):
+        if self._day == 1:
+            await asyncio.sleep(10)
+            await self.chat.send("Day is ending in 20 seconds")
+            await asyncio.sleep(20)
+            return
+
+        # Start everyones day tasks
+        tasks = [
+            self.ctx.create_task(p.day_task(self)) for p in self.players if not p.dead
+        ]
+
+        await self._day_notify_of_night_phase()
+        if self.check_winner():
+            return
+        await self._day_discussion_phase()
+        # We'll cycle nomination -> voting up to three times
+        # if no one gets nominated, or a vote is successful we'll break out
+        for _ in range(3):
+            nominated = await self._day_nomination_phase()
+            if nominated is None:
+                break
+
+            await self._day_defense_phase(nominated)
+            # If vote went through don't allow more nominations
+            if await self._day_vote_phase(nominated):
+                break
+            if self.check_winner():
+                return
+
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+
+    async def _day_notify_of_night_phase(self):
+        """Handles notification of what happened during the night"""
+        killed = {}
+
+        for player in self.players:
+            killer = player.attacked_by
+            cleaner = player.cleaned_by
+            protector = player.protected_by
+
+            # If they weren't killed, we don't care
+            if not killer:
+                continue
+            # Don't care about already dead players
+            if player.dead:
+                continue
+
+            # If they were protected, then let them know
+            if protector and killer.attack_type <= protector.defense_type:
+                await player.channel.send(protector.save_message)
+                # If the killer was mafia, we also want to notify them of the saving
+                if killer.is_mafia:
+                    await self.mafia_chat.send(
+                        f"{player.member.name} was saved last night from your attack!"
+                    )
+                continue
+
+            # If they were cleaned, then notify the cleaner
+            if cleaner:
+                await cleaner.channel.send(
+                    f"You cleaned {player.member.name} up, their role was {player}"
+                )
+                continue
+
+            # Now if we're here it's a kill that wasn't stopped/cleaned
+            player.dead = True
+            # Check if it's a suicide or not
+            if player == killer:
+                msg = "f{player.member.mention} ({player}) suicided during the night!"
+            else:
+                msg = killer.attack_message.format(killer=killer, killed=player)
+
+            killed[player] = msg
+
+            # Remove their alive role and let them see dead chat
+            await player.member.remove_roles(self._alive_game_role)
+            await self.dead_chat.set_permissions(
+                player.member, read_messages=True, send_messages=True
+            )
+            # Now if they were godfather, choose new godfather
+            if player.is_godfather:
+                await self.choose_godfather()
+                player.role.is_godfather = False
+            # If they had an executionor targetting them, they become a jester
+            if player.executionor_target and not player.executionor_target.dead:
+                player.executionor_target.role = self.ctx.bot.role_mapping["Jester"]()
+
+        # This is where we'll send the day notification
+        # task = self.ctx.create_task()
+
+        for player, msg in killed.items():
+            await self.chat.send(msg)
+            # Give a bit of a pause for people to digest information
+            await asyncio.sleep(2)
+
+        if not killed:
+            await self.chat.send("No one died last night!")
+
+        # f = await task
+        # await self.info.send(file=f)
+
+    async def _day_discussion_phase(self):
+        """Handles the discussion phase of the day"""
+        await self.unlock_chat_channel()
+        await self.chat.send(
+            "Discussion time! You have 45 seconds before nomination will start"
+        )
+        await asyncio.sleep(45)
+
+    async def _day_nomination_phase(self) -> Player:
+        """Handles a nomination vote phase of the day"""
+        noms_needed = math.floor(self.total_alive / 2) + 1
+        await self.chat.send(
+            "Nomination started! 30 seconds to nominate, at any point "
+            "type `>>nominate @Member` to nominate the person you want to put up. "
+            f"Need {noms_needed} players to nominate"
+        )
+        nominations = {}
+        try:
+            await self.ctx.bot.wait_for(
+                "message",
+                check=self.ctx.bot.nomination_check(self, nominations),
+                timeout=30,
+            )
+        except asyncio.TimeoutError:
+            pass
+
+        # Nomination done, get the one voted the most
+        try:
+            most, count = collections.Counter(nominations.values()).most_common()[0]
+        except IndexError:
+            most, count = (0, 0)
+
+        if count >= noms_needed:
+            return most
+
+    async def _day_defense_phase(self, player: Player):
+        """Handles the defense of a player phase"""
+        await self.lock_chat_channel()
+        await self.unlock_chat_channel(player.member)
+        await self.chat.send(f"What is your defense {player.member.mention}?")
+        await asyncio.sleep(30)
+        await self.unlock_chat_channel()
+
+    async def _day_vote_phase(self, player: Player):
+        """Handles the voting for a player"""
+        votes = {}
+
+        def check(m):
+            if m.channel != self.chat:
+                return False
+            if voter := discord.utils.get(self.players, member=m.author):
+                return False
+            if m.content.lower() not in ("guilty", "innocent"):
+                return False
+            # Override to allow them to change their decision
+            votes[voter] = m.content.lower()
+            self.ctx.create_task(m.add_reaction("\N{THUMBS UP SIGN}"))
+            return False
+
+        await self.chat.send(
+            "Make your votes now! Send either `Guilty` or `Innocent` to cast your vote"
+        )
+        try:
+            await self.ctx.bot.wait_for("message", check=check, timeout=30)
+        except asyncio.TimeoutError:
+            pass
+
+        guilty_votes = votes.get("guilty", 0)
+        innocent_votes = votes.get("innocent", 0)
+
+        if guilty_votes > innocent_votes:
+            await self.chat.send(
+                f"{player.member.mention} has been lynched! Votes {guilty_votes} to {innocent_votes}"
+            )
+            player.dead = True
+            player.lynched = True
+            # Remove their permissions from their channel
+            await player.channel.set_permissions(
+                player.member, read_messages=True, send_messages=False
+            )
+            if player.is_mafia:
+                await self.mafia_chat.set_permissions(
+                    player.member, read_messages=True, send_messages=False
+                )
+                # Repick godfather if they were godfather
+                if player.is_godfather:
+                    try:
+                        await self.choose_godfather()
+                    # If there's no mafia, citizens win. Just return, the cycle will handle it
+                    except IndexError:
+                        return
+            await player.member.remove_roles(self._alive_game_role)
+            await self.dead_chat.set_permissions(
+                player.member, read_messages=True, send_messages=True
+            )
+            return True
+        else:
+            await self.chat.send(
+                f"{player.member.mention} has been spared! Votes {guilty_votes} to {innocent_votes}"
+            )
+            return False
+
+    async def _night_phase(self):
         await self.night_notification()
         await self.lock_chat_channel()
         await self.unlock_mafia_channel()
@@ -680,176 +899,40 @@ class MafiaGame:
 
         await self.lock_mafia_channel()
 
-    async def _handle_killing(self, killer: Player, killed: Player) -> typing.List[str]:
-        # The notifications that will be sent to the day chat
-        notifs = []
-        protector = killed.protected_by
-        # If protected, check the power of protection against attacking
-        if protector and killer.attack_type <= protector.defense_type:
-            await killed.channel.send(killed.protected_by.save_message)
-            # If the killer was mafia, we also want to notify them of the saving
-            if killer.is_mafia:
-                await self.mafia_chat.send(
-                    "{killed} was saved last night from your attack!"
-                )
-        # There was no protection, they're dead
-        else:
-            # If they were cleaned, let the cleaner know their role
-            if cleaner := killed.cleaned_by:
-                await cleaner.channel.send(
-                    f"You cleaned {killed.member.name} up, their role was {killed}"
-                )
-            # If they suicided, send suicide message
-            elif killer == killed:
-                notifs.append(
-                    killed.suicide_message.format(killer=killer, killed=killed)
-                )
-                await self.chat.send(
-                    f"- {killed.member.mention} ({killed}) suicided during the night!"
-                )
-            # Otherwise send killed message
-            else:
-                notifs.append(
-                    killer.attack_message.format(killer=killer, killed=killed)
-                )
-                await self.chat.send(
-                    f"- {killed.member.mention} ({killed}) was killed during the night!"
-                )
-            # Set them as dead, remove alive role
-            killed.dead = True
-            await killed.member.remove_roles(self._alive_game_role)
-            # This will permanently disable them from talking
-            await self.chat.set_permissions(
-                killed.member, read_messages=True, send_messages=False
-            )
-            if killed.channel:
-                await killed.channel.set_permissions(
-                    killed.member, read_messages=True, send_messages=False
-                )
-            if killed.is_mafia:
-                await self.mafia_chat.set_permissions(
-                    killed.member, read_messages=True, send_messages=False
-                )
-            await self.dead_chat.set_permissions(killed.member, read_messages=True)
-            # Now if they were godfather, choose new godfather
-            if killed.is_godfather:
-                await self.choose_godfather()
-                killed.role.is_godfather = False
-            # If they had an executionor targetting them, they become a jester
-            if killed.executionor_target and not killed.executionor_target.dead:
-                killed.executionor_target.role = self.ctx.bot.role_mapping["Jester"]()
+    # Entry points
 
-        return notifs
+    async def play(self):
+        """Handles the preparation and the playing of the game"""
+        await self._setup_config()
+        await self._game_preparation()
+        await self._start()
 
-    async def pre_day(self):
-        deaths = []
-        if self._day > 1:
-            for player in self.players:
-                if player.dead:
-                    continue
-                if killer := player.killed_by:
-                    await self._handle_killing(killer, player)
-                    deaths.append(player)
+    async def _start(self):
+        """Play the game"""
+        while True:
+            if await self._cycle():
+                break
 
-            await self.day_notification(*deaths)
-        else:
-            await self.day_notification()
+        # The game is done, allow dead players to chat again
+        for player in self.players:
+            if player.dead:
+                await self.chat.set_permissions(player.member, read_messages=True)
 
-        # Cleanup everyone's attrs
-        for p in self.players:
-            if not p.dead:
-                p.cleanup_attrs()
-        # Unlock the channel
-        await self.unlock_chat_channel()
-
-    async def day_tasks(self):
-        day_length = (
-            self._config.day_length if self._day > 1 else self._config.day_length / 2
+        # Send winners
+        winners = self.get_winners()
+        msg = "Winners are:\n{}".format(
+            "\n".join(f"{winner.member.name} ({winner})" for winner in winners)
         )
-
-        # Ensure day takes this long no matter what
-        async def day_sleep():
-            await asyncio.sleep(day_length - 20)
-            await self.chat.send("Day is about to end in 20 seconds")
-            await asyncio.sleep(20)
-
-        tasks = [self.ctx.create_task(day_sleep())]
-
-        nominations = {}
-        msg: typing.Optional[discord.Message] = None
-
-        async def nominate_player():
-            nonlocal msg
-            await self.ctx.bot.wait_for(
-                "message",
-                check=self.ctx.bot.nomination_check(self, nominations, self.chat),
-            )
-            # If we've passed to here that's two nominations
-            msg = await self.chat.send(
-                f"{nominations['nomination'].member.mention} is nominated for hanging! React to vote "
-                "By the end of the day, all the votes will be tallied. If majority voted yes, they "
-                "will be hung"
-            )
-            await msg.add_reaction("\N{THUMBS UP SIGN}")
-            await msg.add_reaction("\N{THUMBS DOWN SIGN}")
-
-        for p in self.players:
-            # Dead players can't do shit
-            if p.dead:
-                continue
-            task = self.ctx.create_task(p.day_task(self))
-            tasks.append(task)
-
-        if self._day > 1:
-            tasks.append(self.ctx.create_task(nominate_player()))
-        _, pending = await asyncio.wait(
-            tasks, timeout=day_length, return_when=asyncio.ALL_COMPLETED
+        await self.chat.send(msg)
+        # Send a message with everyone's roles
+        msg = "\n".join(
+            f"{player.member.mention} ({player})" for player in self.players
         )
-        # Cancel pending tasks, times up
-        for task in pending:
-            task.cancel()
+        await self.ctx.send(msg, allowed_mentions=AllowedMentions(users=False))
+        await asyncio.sleep(60)
+        await self.cleanup()
 
-        # Now check for msg, if it's here then there was a hanging vote
-        if msg:
-            # Reactions aren't updated in place, need to refetch
-            msg = await msg.channel.fetch_message(msg.id)
-            yes_votes = discord.utils.get(msg.reactions, emoji="\N{THUMBS UP SIGN}")
-            no_votes = discord.utils.get(msg.reactions, emoji="\N{THUMBS DOWN SIGN}")
-            yes_count = 0
-            no_count = 0
-            async for user in yes_votes.users():
-                if [p for p in self.players if p.member == user and not p.dead]:
-                    yes_count += 1
-            async for user in no_votes.users():
-                if [p for p in self.players if p.member == user and not p.dead]:
-                    no_count += 1
-            # The lynching happened
-            if yes_count > no_count:
-                player = nominations["nomination"]
-                player.dead = True
-                player.lynched = True
-                await self.chat.set_permissions(
-                    player.member, read_messages=True, send_messages=False
-                )
-                if player.channel:
-                    await player.channel.set_permissions(
-                        player.member, read_messages=True, send_messages=False
-                    )
-                if player.is_mafia:
-                    await self.mafia_chat.set_permissions(
-                        player.member, read_messages=True, send_messages=False
-                    )
-                    if player.is_godfather:
-                        try:
-                            await self.choose_godfather()
-                        # If there's mafia, citizens win. Just return, the cycle will handle it
-                        except IndexError:
-                            return
-                await self.day_notification()
-                await player.member.remove_roles(self._alive_game_role)
-                await self.dead_chat.set_permissions(player.member, read_messages=True)
-
-        await self.lock_chat_channel()
+    # Cleanup
 
     async def cleanup(self):
         for player in self.players:

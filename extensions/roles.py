@@ -173,7 +173,7 @@ class Jailor(Citizen):
     defense_type = DefenseType.powerful
     short_description = "Jail someone to talk to them during the night"
     description = (
-        "Each night you can choose to jail one person, during that night they "
+        "Each day you can choose to jail one person, during that night they "
         "will be placed in a jail channel, everything you say in this channel will be sent "
         "to the jail, allowing you to converse with them without revealing your identity\n\n"
         "**You only have 3 jails total, use them wisely**"
@@ -394,6 +394,7 @@ class Survivor(Independent):
         "You must survive, each night you have the choice to use a bulletproof "
         "vest which will save you from a basic attack. You only have 4 vests"
     )
+    save_message = "Your vest saved you!"
 
     def win_condition(self, game: MafiaGame, player: Player) -> bool:
         return not player.dead
@@ -430,7 +431,7 @@ class Jester(Independent):
 
     def win_condition(self, game: MafiaGame, player: Player):
         return player.lynched or (
-            player.dead and player.killed_by and not player.killed_by.is_mafia
+            player.dead and player.attacked_by and not player.attacked_by.is_mafia
         )
 
 
@@ -438,12 +439,18 @@ class Executioner(Independent):
     id = 152
     limit = 1
     target = None
+    defense_type = DefenseType.basic
     short_description = "Your goal is to get your target lynched"
     description = (
         "Your win condition is getting a certain player lynched. If they "
         "die without getting lynched, you become a Jester. Your goal is to then get "
         "lynched yourself"
     )
+    save_message = "You were attacked, but your defense is too strong!"
+
+    async def night_task(self, game: MafiaGame, player: Player) -> None:
+        # We have permanent basic defense, according to ToS
+        player.protected_by = player
 
     def startup_channel_message(self, game: MafiaGame, player: Player):
         self.target = random.choice([p for p in game.players if p.is_citizen])
@@ -467,6 +474,7 @@ class Arsonist(Independent):
     attack_message = (
         "{killed.member.name} ({killed}) has been set ablaze by the Arsonist!"
     )
+    save_message = "You were attacked, but your defense is too strong!"
 
     async def night_task(self, game: MafiaGame, player: Player):
         # We have permanent basic defense, according to ToS
