@@ -1,9 +1,10 @@
 import asyncio
-from datetime import datetime
 import typing
+from datetime import datetime
 
 import discord
 from discord.ext import commands, menus
+
 from extensions.players import Player
 
 
@@ -12,8 +13,8 @@ def stop_check():
         game = ctx.bot.get_cog("Mafia").games.get(ctx.guild.id)
 
         if game and (
-            ctx.author.guild_permissions.manage_channels
-            or ctx.author == game[1].ctx.author
+                ctx.author.guild_permissions.manage_channels
+                or ctx.author == game[1].ctx.author
         ):
             return True
         return False
@@ -152,7 +153,7 @@ class Mafia(commands.Cog):
     @mafia_start.error
     async def clean_mafia_games(self, ctx, error):
         if isinstance(
-            error, (commands.MaxConcurrencyReached, commands.CommandOnCooldown)
+                error, (commands.MaxConcurrencyReached, commands.CommandOnCooldown)
         ):
             return
 

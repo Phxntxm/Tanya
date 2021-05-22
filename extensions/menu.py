@@ -1,4 +1,5 @@
 import asyncio
+
 import discord
 from discord.ext import menus, commands
 
@@ -23,7 +24,7 @@ class MafiaPages(menus.ListPageSource):
         embed = discord.Embed(
             title="Choose special roles",
             description="Choose the corresponding emote to the role you want to modify, "
-            "then provide the amount you want this role to have\n\n",
+                        "then provide the amount you want this role to have\n\n",
         )
         for count, (role, amt) in enumerate(entries):
             emoji = self.ctx.bot.to_keycap(count)
@@ -47,18 +48,18 @@ class MafiaMenu(menus.MenuPages):
         """The amount of mafia roles allowed to add"""
         # Subtract an extra one, because one of them HAS to be Godfather
         return (
-            self.amount_of_mafia
-            - sum([v for k, v in self.source.entries if k.is_mafia])
-            - 1
+                self.amount_of_mafia
+                - sum([v for k, v in self.source.entries if k.is_mafia])
+                - 1
         )
 
     @property
     def allowed_non_mafia(self):
         """The amount of non-mafia roles allowed to add"""
         return (
-            self.amount_of_players
-            - self.amount_of_mafia
-            - sum([v for k, v in self.source.entries if not k.is_mafia])
+                self.amount_of_players
+                - self.amount_of_mafia
+                - sum([v for k, v in self.source.entries if not k.is_mafia])
         )
 
     async def finalize(self, timed_out):
@@ -88,7 +89,7 @@ class MafiaMenu(menus.MenuPages):
 
     def _get_pages(self, page_number):
         base = page_number * self.source.per_page
-        return self.source.entries[base : base + self.source.per_page]
+        return self.source.entries[base: base + self.source.per_page]
 
     @menus.button(
         "0\N{variation selector-16}\N{combining enclosing keycap}",

@@ -33,6 +33,7 @@ spectating_overwrites = discord.PermissionOverwrite(
 bot_overwrites = discord.PermissionOverwrite(
     read_messages=True,
     send_messages=True,
+    attach_files=True,
     add_reactions=True,
 )
 
@@ -73,7 +74,6 @@ class MafiaGame:
         # The preconfigured option that can be provided
         self._preconfigured_config: str = config
         self._day: int = 1
-        self._day_notifications = collections.defaultdict(list)
         self._role_list: typing.Optional[list] = None
 
     @property
@@ -103,52 +103,15 @@ class MafiaGame:
     # Notification methods
 
     async def night_notification(self):
-        embed = discord.Embed(
-            title=f"Night {self._day - 1}",
-            description="Check your private channels",
-            colour=0x0A0A86,
-        )
-        embed.set_thumbnail(
-            url="https://www.jing.fm/clipimg/full/132-1327252_half-moon-png-images-moon-clipart-png.png"
-        )
-        await self.chat.send(content=self._alive_game_role.mention, embed=embed)
+        async with self.chat.typing():
+            buffer = await self.ctx.bot.create_night_image(self)
+            await self.chat.send(file=discord.File(buffer, filename="night.png"))
 
-    async def day_notification(self, *notifications: str):
-        """Creates a notification embed with all of todays notifications"""
-        msg, current_notifications = self._day_notifications.get(self._day, (None, []))
-        current_notifications.extend(notifications)
-        fmt = "Roles Alive:\n"
-        # Get alive players to add to alive roles
-        alive_players = {}
-        for player in self.players:
-            if player.dead:
-                continue
-            alive_players[str(player)] = alive_players.get(str(player), 0) + 1
-        fmt += "\n".join(f"{key}: {count}" for key, count in alive_players.items())
-        fmt += "\n\n"
-        # If we're not on day one, notify that you can nominate
-        if self._day > 1:
-            fmt += f"**Type >>nominate member to nominate someone to be lynched**. Chat in {self.chat.mention}\n\n"
-        else:
-            fmt += f"Chat in {self.chat.mention}\n\n"
-        # Add the recent actions
-        fmt += "**Recent Actions**\n"
-        fmt += "\n".join(current_notifications)
-
-        embed = discord.Embed(
-            title=f"Day {self._day}", description=fmt, colour=0xF6F823
-        )
-        embed.set_thumbnail(
-            url="https://media.discordapp.net/attachments/840698427755069475/841841923936485416/Sw5vSWOjshUo40xEj-hWqfiRu8Ma2CtYjjh7prRsF6ADPk_z7znpEBf-E3i44U9Hukh3ZJOFhm9S43naa4dEA8pXX4dfAJeEv0bl.png"
-        )
-        if msg is None:
-            msg = await self.info.send(
-                content=self._alive_game_role.mention, embed=embed
-            )
-        else:
-            await msg.edit(embed=embed)
-
-        self._day_notifications[self._day] = [msg, current_notifications]
+    async def day_notification(self, *deaths: Player):
+        """Creates a notification image with all of the overnight deaths"""
+        async with self.info.typing():
+            buffer = await self.ctx.bot.create_day_image(self, list(deaths))
+            await self.info.send(file=discord.File(buffer, filename="day.png"))
 
     # Winner methods
 
@@ -381,7 +344,7 @@ class MafiaGame:
         return min_players, max_players
 
     async def _setup_players(
-        self, min_players: int, max_players: int
+            self, min_players: int, max_players: int
     ) -> typing.List[discord.Member]:
         wait_length_for_players_to_join = 60
         ctx = self.ctx
@@ -394,7 +357,7 @@ class MafiaGame:
             embed = discord.Embed(
                 title="Mafia game!",
                 description=f"Press \N{WHITE HEAVY CHECK MARK} to join! Waiting till at least {min_players} join. "
-                f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
+                            f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
                 thumbnail=ctx.guild.icon_url,
             )
             embed.set_footer(text=f"{len(game_players)}/{min_players} Needed to join")
@@ -415,7 +378,7 @@ class MafiaGame:
                     # We want to start timeout if we've reached min players, but haven't
                     # already started it
                     start_timeout = (
-                        len(game_players) >= min_players and timer_not_started
+                            len(game_players) >= min_players and timer_not_started
                     )
                     if start_timeout:
                         timer_not_started = False
@@ -506,7 +469,7 @@ class MafiaGame:
         return amount_of_mafia
 
     async def _setup_special_roles(
-        self, players: int, mafia: int
+            self, players: int, mafia: int
     ) -> typing.List[typing.Tuple[_players.Player, int]]:
         ctx = self.ctx
         amount_of_specials = [
@@ -662,6 +625,7 @@ class MafiaGame:
 
     async def _day_phase(self):
         if self._day == 1:
+            await self.day_notification()
             await asyncio.sleep(10)
             await self.chat.send("Day is ending in 20 seconds")
             await asyncio.sleep(20)
@@ -750,8 +714,7 @@ class MafiaGame:
             if player.executionor_target and not player.executionor_target.dead:
                 player.executionor_target.role = self.ctx.bot.role_mapping["Jester"]()
 
-        # This is where we'll send the day notification
-        # task = self.ctx.create_task()
+        await self.day_notification(*list(killed.keys()))
 
         for player, msg in killed.items():
             await self.chat.send(msg)
@@ -760,9 +723,6 @@ class MafiaGame:
 
         if not killed:
             await self.chat.send("No one died last night!")
-
-        # f = await task
-        # await self.info.send(file=f)
 
     async def _day_discussion_phase(self):
         """Handles the discussion phase of the day"""
@@ -870,6 +830,7 @@ class MafiaGame:
         await self.night_notification()
         await self.lock_chat_channel()
         await self.unlock_mafia_channel()
+
         # Schedule tasks. Add the asyncio sleep to *ensure* we sleep that long
         # even if everyone finishes early
         async def night_sleep():
@@ -903,8 +864,8 @@ class MafiaGame:
                 player = self.ctx.bot.get_mafia_player(self, player)
                 # They were protected during the day
                 if (
-                    player.protected_by
-                    and player.protected_by.defense_type >= godfather.attack_type
+                        player.protected_by
+                        and player.protected_by.defense_type >= godfather.attack_type
                 ):
                     await self.mafia_chat.send(
                         "That target has been protected for the night! Your attack failed!"
@@ -967,6 +928,8 @@ class MafiaGame:
     # Cleanup
 
     async def cleanup(self):
+        self.ctx.bot.cleanup_imaging(self)
+
         for player in self.players:
             await player.member.remove_roles(self._alive_game_role)
 

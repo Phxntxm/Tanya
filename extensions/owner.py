@@ -1,13 +1,13 @@
-from discord.ext import commands
-
 import asyncio
-from contextlib import redirect_stdout
-import discord
 import inspect
 import io
 import re
 import textwrap
 import traceback
+from contextlib import redirect_stdout
+
+import discord
+from discord.ext import commands
 
 
 def get_syntax_error(e):
@@ -64,9 +64,9 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
 
         def check(m):
             return (
-                m.author.id == msg.author.id
-                and m.channel.id == msg.channel.id
-                and m.content.startswith("`")
+                    m.author.id == msg.author.id
+                    and m.channel.id == msg.channel.id
+                    and m.content.startswith("`")
             )
 
         code = None

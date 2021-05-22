@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import typing
 
 import discord
@@ -27,7 +28,7 @@ class Player:
     jailed: bool = False
 
     def __init__(
-        self, discord_member: discord.Member, ctx: commands.Context, role: Role
+            self, discord_member: discord.Member, ctx: commands.Context, role: Role
     ):
         self.member = discord_member
         self.ctx = ctx
@@ -150,12 +151,12 @@ class Player:
         raise commands.BadArgument(f"Could not find a role named {arg}")
 
     async def wait_for_player(
-        self,
-        game: MafiaGame,
-        message: str,
-        only_others: bool = True,
-        only_alive: bool = True,
-        choices: typing.List[Player] = None,
+            self,
+            game: MafiaGame,
+            message: str,
+            only_others: bool = True,
+            only_alive: bool = True,
+            choices: typing.List[Player] = None,
     ) -> Player:
         # Get available choices based on what options given
         if choices is None:

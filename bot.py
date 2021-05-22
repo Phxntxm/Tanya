@@ -1,3 +1,4 @@
+import multiprocessing
 import discord
 from discord.ext import commands
 from glob import glob
@@ -30,9 +31,11 @@ bot = Bot(
     ),
 )
 
+if __name__ == "__main__":
+    multiprocessing.set_start_method("forkserver")
+    for ext in glob("extensions/*.py"):
+        bot.load_extension(ext.replace("/", ".")[:-3])
 
-for ext in glob("extensions/*.py"):
-    bot.load_extension(ext.replace("/", ".")[:-3])
+#    bot.load_extension("jishaku")
 
-
-bot.run(config.token)
+    bot.run(config.token)
