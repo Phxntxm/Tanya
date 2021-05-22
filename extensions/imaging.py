@@ -44,12 +44,9 @@ async def serialize_game(g: MafiaGame, include_avatars=False) -> dict:
 
 class GameProcessor(multiprocessing.Process):
     def run(self) -> None:
-        print("daemon start")
         pipe = self._args[0] # noqa
         avatars = {}
-        print("waiting")
         data: dict = pipe.recv()
-        print("received")
         game: dict = data['g']
         for player in game['p']:
             avatars[player['i']] = round_avatar(player['a'])
@@ -94,7 +91,6 @@ async def create_day_image(game: MafiaGame, deaths: typing.List[players.Player])
         processes[id(game)] = proc = GameProcessor(args=(child,))
         proc.start()
         proc.pipe = parent
-        print(proc.pid)
         parent.send({"g": await serialize_game(game, include_avatars=True)})
         parent.send({"op": 1, "g": {}, "d": [x.member.id for x in deaths]})
 
@@ -110,7 +106,6 @@ async def create_night_image(game: MafiaGame) -> io.BytesIO:
         processes[id(game)] = proc = GameProcessor(args=(child,))
         proc.start()
         proc.pipe = parent
-        print(proc.pid)
         parent.send({"g": await serialize_game(game, include_avatars=True)})
         parent.send({"op": 0, "d": game._day-1}) # noqa
 
@@ -205,8 +200,6 @@ def cleanup_game(game: MafiaGame):
         proc = processes[g_id]
         proc.terminate()
         del processes[g_id]
-    else:
-        print(game)
 
 def setup(bot):
     bot.create_day_image = create_day_image
