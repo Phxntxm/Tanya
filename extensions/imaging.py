@@ -122,6 +122,7 @@ def _sync_make_night_image(night: int) -> io.BytesIO:
     base: Image.Image = Image.open("./resources/background-night.png", formats=("png",))
     base = base.resize((1920, 1080))
     raster = ImageDraw.Draw(base)
+    __w, _ = raster.textsize(f"Night {night}", font=font_28days_title) # noqa
     raster.text(((1920-__w)/2, 30), f"Night {night}", font=font_28days_title, fill="black") # noqa
 
     buf = io.BytesIO()
