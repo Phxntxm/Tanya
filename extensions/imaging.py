@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import multiprocessing
 import typing
+from concurrent.futures import ThreadPoolExecutor
 import io
 
 import discord
@@ -19,6 +20,7 @@ font_vermillion = ImageFont.truetype("./resources/Vermillion.ttf", size=34)
 death_marker = Image.open("./resources/death-marker.png", formats=("png",)).resize((96, 96))
 
 processes: typing.Dict[int, "GameProcessor"] = {}
+pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="ImageWaiter-")
 
 async def serialize_player(p: players.Player, ia: bool) -> dict:
     if ia:
@@ -43,7 +45,7 @@ async def serialize_game(g: MafiaGame, include_avatars=False) -> dict:
 class GameProcessor(multiprocessing.Process):
     def run(self) -> None:
         print("daemon start")
-        pipe = self._args[0] # type: multiprocessing.connection.PipeConnection
+        pipe = self._args[0] # noqa
         avatars = {}
         print("waiting")
         data: dict = pipe.recv()
@@ -99,7 +101,7 @@ async def create_day_image(game: MafiaGame, deaths: typing.List[players.Player])
         proc = processes[id(game)]
         proc.pipe.send({"op": 1, "d": [x.member.id for x in deaths], "g": await serialize_game(game, include_avatars=False)})
 
-    return await game.ctx.bot.loop.run_in_executor(None, proc.pipe.recv)
+    return await game.ctx.bot.loop.run_in_executor(pool, proc.pipe.recv)
 
 async def create_night_image(game: MafiaGame) -> io.BytesIO:
     if id(game) not in processes:
@@ -114,7 +116,7 @@ async def create_night_image(game: MafiaGame) -> io.BytesIO:
         proc = processes[id(game)]
         proc.pipe.send({"op": 0, "g": serialize_game(game, False)})
 
-    return await game.ctx.bot.loop.run_in_executor(None, proc.pipe.recv)
+    return await game.ctx.bot.loop.run_in_executor(pool, proc.pipe.recv)
 
 def _sync_make_night_image(night: int) -> io.BytesIO:
     base: Image.Image = Image.open("./resources/background-night.png", formats=("png",))
@@ -169,7 +171,7 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
             col += 1
 
     if deaths:
-        d = [discord.utils.find(lambda p: p['i'] == x, game['p']) for x in deaths]
+        d = [discord.utils.find(lambda pl: pl['i'] == x, game['p']) for x in deaths]
         for p in d:
             fill = "black" if col >= 1 and 3 > row > 0 else "white"
             paste_avatar(p, fill, True, True)
