@@ -110,11 +110,11 @@ async def create_night_image(game: MafiaGame) -> io.BytesIO:
         proc.start()
         proc.pipe = parent
         parent.send({"g": await serialize_game(game, include_avatars=True)})
-        parent.send({"op": 0, "d": game._day}) # noqa
+        parent.send({"op": 0, "d": game._day-1}) # noqa
 
     else:
         proc = processes[id(game)]
-        proc.pipe.send({"op": 0, "d": game._day}) # noqa
+        proc.pipe.send({"op": 0, "d": game._day-1}) # noqa
 
     return await game.ctx.bot.loop.run_in_executor(pool, proc.pipe.recv)
 

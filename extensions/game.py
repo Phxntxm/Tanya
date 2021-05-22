@@ -108,7 +108,7 @@ class MafiaGame:
             await self.chat.send(file=discord.File(buffer, filename="night.png"))
 
     async def day_notification(self, *deaths: Player):
-        """Creates a notification image with all of todays notifications"""
+        """Creates a notification imdage with all of todays notifications"""
         async with self.info.typing():
             buffer = await self.ctx.bot.create_day_image(self, list(deaths))
             await self.info.send(file=discord.File(buffer, filename="day.png"))
@@ -625,6 +625,7 @@ class MafiaGame:
 
     async def _day_phase(self):
         if self._day == 1:
+            await self.day_notification()
             await asyncio.sleep(10)
             await self.chat.send("Day is ending in 20 seconds")
             await asyncio.sleep(20)
@@ -713,8 +714,7 @@ class MafiaGame:
             if player.executionor_target and not player.executionor_target.dead:
                 player.executionor_target.role = self.ctx.bot.role_mapping["Jester"]()
 
-        # This is where we'll send the day notification
-        # task = self.ctx.create_task()
+        await self.day_notification(*list(killed.keys()))
 
         for player, msg in killed.items():
             await self.chat.send(msg)
