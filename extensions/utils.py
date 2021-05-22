@@ -36,7 +36,7 @@ class CustomContext(commands.Context):
 
 
 def hex_to_players(
-    num: str, all_roles: typing.List[Role]
+        num: str, all_roles: typing.List[Role]
 ) -> typing.Tuple[int, int, int, typing.List[Role]]:
     """Takes in a hex number and converts it to a configuration
     based on the amount of special roles it specifies"""
@@ -72,10 +72,10 @@ def hex_to_players(
 
 
 def players_to_hex(
-    roles: typing.List[Role],
-    amount_of_mafia: int,
-    min_players: int = None,
-    max_players: int = None,
+        roles: typing.List[Role],
+        amount_of_mafia: int,
+        min_players: int = None,
+        max_players: int = None,
 ) -> str:
     """Takes in a list of players and produces a hex configuration. If min and max
     are not provided, then min and max will be the amount of roles"""
@@ -178,10 +178,10 @@ def nomination_check(game: MafiaGame, nominations: dict) -> typing.Callable:
 
 
 def private_channel_check(
-    game: MafiaGame,
-    player: Player,
-    mapping: typing.Dict[int, str],
-    can_choose_self: bool = False,
+        game: MafiaGame,
+        player: Player,
+        mapping: typing.Dict[int, str],
+        can_choose_self: bool = False,
 ) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
@@ -206,7 +206,7 @@ def private_channel_check(
 
 
 def mafia_kill_check(
-    game: MafiaGame, mapping: typing.Dict[int, str]
+        game: MafiaGame, mapping: typing.Dict[int, str]
 ) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel

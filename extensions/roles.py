@@ -50,7 +50,6 @@ class DefenseType(Enum):
 
 
 class Role(abc.ABC):
-
     # The ID that will be used to identify roles for config
     id: int = None
     # Needed to check win condition for mafia during day, before they kill
@@ -153,7 +152,7 @@ class Sheriff(Citizen):
 
         # Handle what happens if their choice is right/wrong
         if target.is_citizen or (
-            target.disguised_as and target.disguised_as.is_citizen
+                target.disguised_as and target.disguised_as.is_citizen
         ):
             player.kill(player)
             target.kill(player)
@@ -261,7 +260,7 @@ class PI(Citizen):
 
         # Now compare the two people
         if (player1.is_citizen and player2.is_citizen) or (
-            player1.is_mafia and player2.is_mafia
+                player1.is_mafia and player2.is_mafia
         ):
             await player.channel.send(
                 f"{player1.member.mention} and {player2.member.mention} have the same alignment"
@@ -411,9 +410,9 @@ class Survivor(Independent):
 
         def check(p):
             return (
-                p.message_id == msg.id
-                and p.user_id == player.member.id
-                and str(p.emoji) == "\N{THUMBS UP SIGN}"
+                    p.message_id == msg.id
+                    and p.user_id == player.member.id
+                    and str(p.emoji) == "\N{THUMBS UP SIGN}"
             )
 
         await game.ctx.bot.wait_for("raw_reaction_add", check=check)
@@ -431,7 +430,7 @@ class Jester(Independent):
 
     def win_condition(self, game: MafiaGame, player: Player):
         return player.lynched or (
-            player.dead and player.attacked_by and not player.attacked_by.is_mafia
+                player.dead and player.attacked_by and not player.attacked_by.is_mafia
         )
 
 

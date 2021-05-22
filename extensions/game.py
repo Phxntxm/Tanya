@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import dataclasses
 import math
-import collections
 import random
 import typing
 
@@ -108,7 +108,7 @@ class MafiaGame:
             await self.chat.send(file=discord.File(buffer, filename="night.png"))
 
     async def day_notification(self, *deaths: Player):
-        """Creates a notification imdage with all of todays notifications"""
+        """Creates a notification image with all of the overnight deaths"""
         async with self.info.typing():
             buffer = await self.ctx.bot.create_day_image(self, list(deaths))
             await self.info.send(file=discord.File(buffer, filename="day.png"))
@@ -344,7 +344,7 @@ class MafiaGame:
         return min_players, max_players
 
     async def _setup_players(
-        self, min_players: int, max_players: int
+            self, min_players: int, max_players: int
     ) -> typing.List[discord.Member]:
         wait_length_for_players_to_join = 60
         ctx = self.ctx
@@ -357,7 +357,7 @@ class MafiaGame:
             embed = discord.Embed(
                 title="Mafia game!",
                 description=f"Press \N{WHITE HEAVY CHECK MARK} to join! Waiting till at least {min_players} join. "
-                f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
+                            f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
                 thumbnail=ctx.guild.icon_url,
             )
             embed.set_footer(text=f"{len(game_players)}/{min_players} Needed to join")
@@ -378,7 +378,7 @@ class MafiaGame:
                     # We want to start timeout if we've reached min players, but haven't
                     # already started it
                     start_timeout = (
-                        len(game_players) >= min_players and timer_not_started
+                            len(game_players) >= min_players and timer_not_started
                     )
                     if start_timeout:
                         timer_not_started = False
@@ -469,7 +469,7 @@ class MafiaGame:
         return amount_of_mafia
 
     async def _setup_special_roles(
-        self, players: int, mafia: int
+            self, players: int, mafia: int
     ) -> typing.List[typing.Tuple[_players.Player, int]]:
         ctx = self.ctx
         amount_of_specials = [
@@ -724,9 +724,6 @@ class MafiaGame:
         if not killed:
             await self.chat.send("No one died last night!")
 
-        # f = await task
-        # await self.info.send(file=f)
-
     async def _day_discussion_phase(self):
         """Handles the discussion phase of the day"""
         await self.unlock_chat_channel()
@@ -833,6 +830,7 @@ class MafiaGame:
         await self.night_notification()
         await self.lock_chat_channel()
         await self.unlock_mafia_channel()
+
         # Schedule tasks. Add the asyncio sleep to *ensure* we sleep that long
         # even if everyone finishes early
         async def night_sleep():
@@ -866,8 +864,8 @@ class MafiaGame:
                 player = self.ctx.bot.get_mafia_player(self, player)
                 # They were protected during the day
                 if (
-                    player.protected_by
-                    and player.protected_by.defense_type >= godfather.attack_type
+                        player.protected_by
+                        and player.protected_by.defense_type >= godfather.attack_type
                 ):
                     await self.mafia_chat.send(
                         "That target has been protected for the night! Your attack failed!"
