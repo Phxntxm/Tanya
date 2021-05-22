@@ -94,6 +94,7 @@ async def create_day_image(game: MafiaGame, deaths: typing.List[players.Player])
         processes[id(game)] = proc = GameProcessor(args=(child,))
         proc.start()
         proc.pipe = parent
+        print(proc.pid)
         parent.send({"g": await serialize_game(game, include_avatars=True)})
         parent.send({"op": 1, "g": {}, "d": [x.member.id for x in deaths]})
 
@@ -109,6 +110,7 @@ async def create_night_image(game: MafiaGame) -> io.BytesIO:
         processes[id(game)] = proc = GameProcessor(args=(child,))
         proc.start()
         proc.pipe = parent
+        print(proc.pid)
         parent.send({"g": await serialize_game(game, include_avatars=True)})
         parent.send({"op": 0, "d": game._day-1}) # noqa
 
@@ -198,9 +200,13 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
     return buf
 
 def cleanup_game(game: MafiaGame):
-    if id(game) in processes:
-        processes[id(game)].terminate()
-        del processes[id(game)]
+    g_id = id(game)
+    if g_id in processes:
+        proc = processes[g_id]
+        proc.terminate()
+        del processes[g_id]
+    else:
+        print(game)
 
 def setup(bot):
     bot.create_day_image = create_day_image

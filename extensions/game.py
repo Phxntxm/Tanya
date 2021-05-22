@@ -931,6 +931,7 @@ class MafiaGame:
 
     async def cleanup(self):
         self.ctx.bot.cleanup_imaging(self)
+
         for player in self.players:
             await player.member.remove_roles(self._alive_game_role)
 
