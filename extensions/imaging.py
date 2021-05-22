@@ -210,3 +210,5 @@ def teardown(bot):
     del bot.create_day_image
     del bot.create_night_image
     del bot.cleanup_imaging
+    for proc in processes.values():
+        proc.terminate()
