@@ -344,7 +344,7 @@ class MafiaGame:
         return min_players, max_players
 
     async def _setup_players(
-            self, min_players: int, max_players: int
+        self, min_players: int, max_players: int
     ) -> typing.List[discord.Member]:
         wait_length_for_players_to_join = 60
         ctx = self.ctx
@@ -357,7 +357,7 @@ class MafiaGame:
             embed = discord.Embed(
                 title="Mafia game!",
                 description=f"Press \N{WHITE HEAVY CHECK MARK} to join! Waiting till at least {min_players} join. "
-                            f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
+                f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
                 thumbnail=ctx.guild.icon_url,
             )
             embed.set_footer(text=f"{len(game_players)}/{min_players} Needed to join")
@@ -378,7 +378,7 @@ class MafiaGame:
                     # We want to start timeout if we've reached min players, but haven't
                     # already started it
                     start_timeout = (
-                            len(game_players) >= min_players and timer_not_started
+                        len(game_players) >= min_players and timer_not_started
                     )
                     if start_timeout:
                         timer_not_started = False
@@ -469,7 +469,7 @@ class MafiaGame:
         return amount_of_mafia
 
     async def _setup_special_roles(
-            self, players: int, mafia: int
+        self, players: int, mafia: int
     ) -> typing.List[typing.Tuple[_players.Player, int]]:
         ctx = self.ctx
         amount_of_specials = [
@@ -714,7 +714,7 @@ class MafiaGame:
             if player.executionor_target and not player.executionor_target.dead:
                 player.executionor_target.role = self.ctx.bot.role_mapping["Jester"]()
 
-        await self.day_notification(*list(killed.keys()))
+        task = self.ctx.create_day_image(self, list(*list(killed.keys())))
 
         for player, msg in killed.items():
             await self.chat.send(msg)
@@ -723,6 +723,10 @@ class MafiaGame:
 
         if not killed:
             await self.chat.send("No one died last night!")
+
+        # Wait for the task to get the image and send it
+        buff = await task
+        await self.info.send(file=discord.File(buff, name="day.png"))
 
     async def _day_discussion_phase(self):
         """Handles the discussion phase of the day"""
@@ -827,7 +831,6 @@ class MafiaGame:
             return False
 
     async def _night_phase(self):
-        await self.night_notification()
         await self.lock_chat_channel()
         await self.unlock_mafia_channel()
 
@@ -838,7 +841,7 @@ class MafiaGame:
             await self.mafia_chat.send("Night is about to end in 20 seconds")
             await asyncio.sleep(20)
 
-        tasks = [self.ctx.create_task(night_sleep())]
+        tasks = [self.ctx.create_task(night_sleep()), self.night_notification()]
         mapping = {
             count: player.member.name
             for count, player in enumerate(self.players)
@@ -864,8 +867,8 @@ class MafiaGame:
                 player = self.ctx.bot.get_mafia_player(self, player)
                 # They were protected during the day
                 if (
-                        player.protected_by
-                        and player.protected_by.defense_type >= godfather.attack_type
+                    player.protected_by
+                    and player.protected_by.defense_type >= godfather.attack_type
                 ):
                     await self.mafia_chat.send(
                         "That target has been protected for the night! Your attack failed!"
