@@ -1,11 +1,20 @@
+from __future__ import annotations
+
 import asyncio
+import typing
+
 
 import discord
 from discord.ext import menus, commands
 
+from utils import min_max_check, to_keycap
+
+if typing.TYPE_CHECKING:
+    from utils import Context
+
 
 class MafiaPages(menus.ListPageSource):
-    def __init__(self, data: list, ctx: commands.Context):
+    def __init__(self, data: typing.List, ctx: Context):
         self.ctx = ctx
 
         def sort_func(arg):
@@ -20,14 +29,14 @@ class MafiaPages(menus.ListPageSource):
 
         super().__init__(data, per_page=5)
 
-    async def format_page(self, menu, entries: list):
+    async def format_page(self, menu: MafiaMenu, entries: typing.List):
         embed = discord.Embed(
             title="Choose special roles",
             description="Choose the corresponding emote to the role you want to modify, "
-                        "then provide the amount you want this role to have\n\n",
+            "then provide the amount you want this role to have\n\n",
         )
         for count, (role, amt) in enumerate(entries):
-            emoji = self.ctx.bot.to_keycap(count)
+            emoji = to_keycap(count)
             role_type = "Unknown"
             if role.is_citizen:
                 role_type = "Citizen"
@@ -35,31 +44,34 @@ class MafiaPages(menus.ListPageSource):
                 role_type = "Mafia"
             elif role.is_independent:
                 role_type = "Independent"
-            embed.description += f"{emoji} **{role.__name__}**({role_type}): {amt}\n"
+            embed.description = (
+                f"{embed.description}{emoji} **{role.__name__}**({role_type}): {amt}\n"
+            )
         return embed
 
 
 class MafiaMenu(menus.MenuPages):
     amount_of_players = 0
     amount_of_mafia = 0
+    ctx: Context
 
     @property
     def allowed_mafia(self):
         """The amount of mafia roles allowed to add"""
         # Subtract an extra one, because one of them HAS to be Godfather
         return (
-                self.amount_of_mafia
-                - sum([v for k, v in self.source.entries if k.is_mafia])
-                - 1
+            self.amount_of_mafia
+            - sum([v for k, v in self.source.entries if k.is_mafia])
+            - 1
         )
 
     @property
     def allowed_non_mafia(self):
         """The amount of non-mafia roles allowed to add"""
         return (
-                self.amount_of_players
-                - self.amount_of_mafia
-                - sum([v for k, v in self.source.entries if not k.is_mafia])
+            self.amount_of_players
+            - self.amount_of_mafia
+            - sum([v for k, v in self.source.entries if not k.is_mafia])
         )
 
     async def finalize(self, timed_out):
@@ -89,7 +101,7 @@ class MafiaMenu(menus.MenuPages):
 
     def _get_pages(self, page_number):
         base = page_number * self.source.per_page
-        return self.source.entries[base: base + self.source.per_page]
+        return self.source.entries[base : base + self.source.per_page]
 
     @menus.button(
         "0\N{variation selector-16}\N{combining enclosing keycap}",
@@ -147,7 +159,7 @@ class MafiaMenu(menus.MenuPages):
 
         msg = await self.ctx.send(f"{role.__name__}: How many? 0 - {amt_allowed}")
         answer = await self.ctx.bot.wait_for(
-            "message", check=self.ctx.bot.min_max_check(self.ctx, 0, amt_allowed)
+            "message", check=min_max_check(self.ctx, 0, amt_allowed)
         )
         # Delete and set answer
         self.source.entries[index] = (role, int(answer.content))
@@ -184,13 +196,3 @@ class MafiaMenu(menus.MenuPages):
     @menus.button("\N{WHITE HEAVY CHECK MARK}", position=menus.Last(2))
     async def accept_setings(self, payload):
         self.stop()
-
-
-def setup(bot):
-    bot.MafiaMenu = MafiaMenu
-    bot.MafiaPages = MafiaPages
-
-
-def teardown(bot):
-    del bot.MafiaMenu
-    del bot.MafiaPages

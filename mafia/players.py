@@ -4,15 +4,14 @@ import typing
 
 import discord
 from discord.ext import commands
+from mafia import role_mapping
+from utils import private_channel_check, get_mafia_player
 
 if typing.TYPE_CHECKING:
-    from extensions.game import MafiaGame
-    from extensions.roles import Role, AttackType, DefenseType
+    from mafia import MafiaGame, Role, AttackType, DefenseType
 
 
 class Player:
-    role: Role = None
-    channel: discord.TextChannel = None
     dead: bool = False
 
     # Players that affect this player
@@ -28,9 +27,12 @@ class Player:
     jailed: bool = False
 
     def __init__(
-            self, discord_member: discord.Member, ctx: commands.Context, role: Role
+        self,
+        discord_member: discord.Member | discord.User,
+        ctx: commands.Context,
+        role: Role,
     ):
-        self.member = discord_member
+        self.member = typing.cast(discord.Member, discord_member)
         self.ctx = ctx
         self.role = role
         self.visited_by: typing.List[Player] = []
@@ -39,11 +41,11 @@ class Player:
         return str(self.role)
 
     @property
-    def attack_type(self) -> AttackType:
+    def attack_type(self) -> typing.Optional[AttackType]:
         return self.role.attack_type
 
     @property
-    def defense_type(self) -> DefenseType:
+    def defense_type(self) -> typing.Optional[DefenseType]:
         return self.role.defense_type
 
     @property
@@ -72,18 +74,18 @@ class Player:
 
     @property
     def is_mafia(self) -> bool:
-        mafia_role = self.ctx.bot.role_mapping.get("Mafia")
-        return mafia_role and isinstance(self.role, mafia_role)
+        mafia_role = role_mapping.get("Mafia")
+        return mafia_role is not None and isinstance(self.role, mafia_role)
 
     @property
     def is_citizen(self) -> bool:
-        citizen_role = self.ctx.bot.role_mapping.get("Citizen")
-        return citizen_role and isinstance(self.role, citizen_role)
+        citizen_role = role_mapping.get("Citizen")
+        return citizen_role is not None and isinstance(self.role, citizen_role)
 
     @property
     def is_independent(self) -> bool:
-        independent_role = self.ctx.bot.role_mapping.get("Independent")
-        return independent_role and isinstance(self.role, independent_role)
+        independent_role = role_mapping.get("Independent")
+        return independent_role is not None and isinstance(self.role, independent_role)
 
     @property
     def is_godfather(self) -> bool:
@@ -91,8 +93,8 @@ class Player:
 
     @property
     def is_jailor(self) -> bool:
-        jailor_role = self.ctx.bot.role_mapping.get("Jailor")
-        return jailor_role and isinstance(self.role, jailor_role)
+        jailor_role = role_mapping.get("Jailor")
+        return jailor_role is not None and isinstance(self.role, jailor_role)
 
     @property
     def can_kill_mafia_at_night(self) -> bool:
@@ -143,20 +145,20 @@ class Player:
         self.visited_by.append(by)
 
     @classmethod
-    async def convert(cls, ctx: commands.Context, arg: str) -> Player:
-        for name, role in ctx.bot.role_mapping.items():
+    async def convert(cls, ctx: commands.Context, arg: str) -> typing.Optional[Player]:
+        for name, role in role_mapping.items():
             if name not in ("Mafia", "Citizen") and name.lower() == arg.lower():
                 return cls(ctx.author, ctx, role())
 
         raise commands.BadArgument(f"Could not find a role named {arg}")
 
     async def wait_for_player(
-            self,
-            game: MafiaGame,
-            message: str,
-            only_others: bool = True,
-            only_alive: bool = True,
-            choices: typing.List[Player] = None,
+        self,
+        game: MafiaGame,
+        message: str,
+        only_others: bool = True,
+        only_alive: bool = True,
+        choices: typing.List[str] | typing.List[Player] = None,
     ) -> Player:
         # Get available choices based on what options given
         if choices is None:
@@ -169,17 +171,15 @@ class Player:
                 choices.append(p.member.name)
         # Turn into string
         mapping = {count: player for count, player in enumerate(choices, start=1)}
-        choices = "\n".join(f"{count}: {player}" for count, player in mapping.items())
-        await self.channel.send(message + f". Choices are:\n{choices}")
+        _choices = "\n".join(f"{count}: {player}" for count, player in mapping.items())
+        await self.channel.send(message + f". Choices are:\n{_choices}")
 
         msg = await game.ctx.bot.wait_for(
             "message",
-            check=game.ctx.bot.private_channel_check(
-                game, self, mapping, not only_others
-            ),
+            check=private_channel_check(game, self, mapping, not only_others),
         )
         player = mapping[int(msg.content)]
-        return game.ctx.bot.get_mafia_player(game, player)
+        return get_mafia_player(game, player)
 
     async def lock_channel(self):
         if self.channel:
@@ -203,11 +203,3 @@ class Player:
 
     async def post_night_task(self, game: MafiaGame):
         await self.role.post_night_task(game, self)
-
-
-def setup(bot):
-    bot.mafia_player = Player
-
-
-def teardown(bot):
-    del bot.mafia_player

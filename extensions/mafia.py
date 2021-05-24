@@ -5,7 +5,8 @@ from datetime import datetime
 import discord
 from discord.ext import commands, menus
 
-from extensions.players import Player
+from utils import Cog, Context
+from mafia import role_mapping, MafiaGame, Player, Role
 
 
 def stop_check():
@@ -13,8 +14,8 @@ def stop_check():
         game = ctx.bot.get_cog("Mafia").games.get(ctx.guild.id)
 
         if game and (
-                ctx.author.guild_permissions.manage_channels
-                or ctx.author == game[1].ctx.author
+            ctx.author.guild_permissions.manage_channels
+            or ctx.author == game[1].ctx.author
         ):
             return True
         return False
@@ -26,7 +27,9 @@ class RolesSource(menus.ListPageSource):
     def __init__(self, data: typing.List[Player]):
         super().__init__(data, per_page=10)
 
-    async def format_page(self, menu: menus.Menu, entries: typing.List[Player]):
+    async def format_page(
+        self, menu: menus.Menu, entries: typing.List[typing.Type[Role]]
+    ):
         embed = discord.Embed(
             title="Roles",
             color=0xFF0000,
@@ -46,7 +49,7 @@ class RolesSource(menus.ListPageSource):
         return embed
 
 
-class Mafia(commands.Cog):
+class Mafia(Cog):
     games = {}
     # Useful for restarting a game, or getting info on the last game
     previous_games = {}
@@ -60,11 +63,11 @@ class Mafia(commands.Cog):
     @mafia.command(name="start")
     @commands.guild_only()
     @commands.max_concurrency(1, per=commands.BucketType.guild)
-    async def mafia_start(self, ctx, config: str = None):
+    async def mafia_start(self, ctx: Context, config: str = ""):
         """Start a game of mafia. Note that currently only one game can run at a time
         per server, this limit may be upped in the future"""
         # This can happen if we're redoing a game
-        game = ctx.bot.MafiaGame(ctx, config=config)
+        game = MafiaGame(ctx, config=config)
         # Store task so it can be cancelled later
         task = ctx.bot.loop.create_task(game.play())
         self.games[ctx.guild.id] = (task, game)
@@ -80,7 +83,7 @@ class Mafia(commands.Cog):
     @mafia.command(name="redo")
     @commands.guild_only()
     @commands.max_concurrency(1, per=commands.BucketType.guild)
-    async def mafia_redo(self, ctx):
+    async def mafia_redo(self, ctx: Context):
         """Starts another game with the same configuration as the last"""
         game = self.previous_games.get(ctx.guild.id)
         if game:
@@ -91,7 +94,7 @@ class Mafia(commands.Cog):
     @mafia.command(name="cleanup")
     @commands.has_permissions(manage_channels=True)
     @commands.guild_only()
-    async def mafia_cleanup(self, ctx):
+    async def mafia_cleanup(self, ctx: Context):
         """Cleans up all mafia channels. This usually shouldn't be needed, unless something
         went wrong with the bot's auto cleanup which happens a minute after a game finishes.
         Note that the bot caches category channels for reuse doing this command will remove
@@ -107,7 +110,7 @@ class Mafia(commands.Cog):
     @mafia.command(name="stop", aliases=["cancel"])
     @stop_check()
     @commands.guild_only()
-    async def mafia_stop(self, ctx):
+    async def mafia_stop(self, ctx: Context):
         """Stops an ongoing game of Mafia"""
         await ctx.send("\N{THUMBS UP SIGN}")
 
@@ -119,18 +122,18 @@ class Mafia(commands.Cog):
             await game.cleanup()
 
     @mafia.command(name="roles")
-    async def mafia_roles(self, ctx):
+    async def mafia_roles(self, ctx: Context):
         """Displays the available custom roles"""
         roles = [
             role
-            for name, role in ctx.bot.role_mapping.items()
+            for name, role in role_mapping.items()
             if name not in ("Mafia", "Citizens")
         ]
         menu = menus.MenuPages(source=RolesSource(roles), clear_reactions_after=True)
         await menu.start(ctx)
 
     @mafia.command(name="role")
-    async def mafia_role(self, ctx, role: Player):
+    async def mafia_role(self, ctx: Context, role: Player):
         """Displays the information for the provided role"""
         embed = discord.Embed(
             title=role,
@@ -141,19 +144,19 @@ class Mafia(commands.Cog):
         embed.set_author(
             name="Dev Server",
             url="https://discord.gg/B6qJ4NKGvp",
-            icon_url=ctx.bot.user.avatar_url,
+            icon_url=str(ctx.bot.user.avatar_url),
         )
         await ctx.send(embed=embed)
 
     @mafia.command(name="rules", aliases=["tutorial", "guide"])
-    async def mafia_rules(self, ctx):
+    async def mafia_rules(self, ctx: Context):
         """Displays the rules for this game of mafia"""
         await self.guide(ctx)
 
     @mafia_start.error
-    async def clean_mafia_games(self, ctx, error):
+    async def clean_mafia_games(self, ctx: Context, error: BaseException):
         if isinstance(
-                error, (commands.MaxConcurrencyReached, commands.CommandOnCooldown)
+            error, (commands.MaxConcurrencyReached, commands.CommandOnCooldown)
         ):
             return
 
@@ -168,7 +171,7 @@ class Mafia(commands.Cog):
             self.errored_games[ctx.guild.id] = game
 
     @commands.command(aliases=["tutorial"])
-    async def guide(self, ctx):
+    async def guide(self, ctx: Context):
         """Displays the rules for this game of mafia"""
         desc = """
 The rules of mafia are prety straight forward:
@@ -194,7 +197,7 @@ Main chats during the game:
         embed.set_author(
             name="Dev Server",
             url="https://discord.gg/B6qJ4NKGvp",
-            icon_url=ctx.bot.user.avatar_url,
+            icon_url=str(ctx.bot.user.avatar_url),
         )
         await ctx.send(embed=embed)
 

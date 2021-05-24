@@ -9,8 +9,27 @@ from enum import Enum
 import discord
 
 if typing.TYPE_CHECKING:
-    from extensions.game import MafiaGame
-    from extensions.players import Player
+    from mafia import MafiaGame, Player
+
+__all__ = (
+    "AttackType",
+    "DefenseType",
+    "Role",
+    "Doctor",
+    "Sheriff",
+    "Jailor",
+    "PI",
+    "Lookout",
+    "Mafia",
+    "Janitor",
+    "Disguiser",
+    "Independent",
+    "Survivor",
+    "Jester",
+    "Executioner",
+    "Arsonist",
+    "role_mapping",
+)
 
 
 class AttackType(Enum):
@@ -51,7 +70,7 @@ class DefenseType(Enum):
 
 class Role(abc.ABC):
     # The ID that will be used to identify roles for config
-    id: int = None
+    id: int = -1
     # Needed to check win condition for mafia during day, before they kill
     can_kill_mafia_at_night: bool = False
     # This boolean determines if their win condition only applies
@@ -62,11 +81,11 @@ class Role(abc.ABC):
     # The amount that can be used per game
     limit: int = 0
     # The attack and defense this role can have
-    attack_type: AttackType = None
-    defense_type: DefenseType = None
+    attack_type: typing.Optional[AttackType] = None
+    defense_type: typing.Optional[DefenseType] = None
 
     # Messages sent based on different statuses
-    save_message: str = ""
+    save_message: str = "You were protected by an attack!"
     attack_message: str = ""
     suicide_message: str = ""
 
@@ -75,8 +94,7 @@ class Role(abc.ABC):
     is_mafia: bool = False
     is_independent: bool = False
 
-    channel: discord.TextChannel = None
-    player: Player = None
+    channel: typing.Optional[discord.TextChannel] = None
 
     description = ""
     short_description = ""
@@ -152,7 +170,7 @@ class Sheriff(Citizen):
 
         # Handle what happens if their choice is right/wrong
         if target.is_citizen or (
-                target.disguised_as and target.disguised_as.is_citizen
+            target.disguised_as and target.disguised_as.is_citizen
         ):
             player.kill(player)
             target.kill(player)
@@ -178,6 +196,7 @@ class Jailor(Citizen):
         "**You only have 3 jails total, use them wisely**"
     )
     attack_message = "{killed.member.name} ({killed}) has been executed by the Jailor!"
+    save_message = "Someone tried to attack you last night, but you were jailed!"
 
     async def day_task(self, game: MafiaGame, player: Player):
         if self.jails <= 0:
@@ -196,43 +215,36 @@ class Jailor(Citizen):
         )
 
     async def night_task(self, game: MafiaGame, player: Player):
-        if self.target:
-            await game.jail.set_permissions(self.target.member, read_messages=True)
-            # Make sure to start the unjailing process
-            game.ctx.create_task(self.unjail(game))
+        if target := self.target:
+            self.target = None
+            await target.channel.send(
+                f"{target.member.mention} You've been jailed! Messages from here on will be from/to the Jailor:"
+                "-------------------------------------------"
+            )
 
             # Handle the swapping of messages from the jailed player
             def check(m):
                 # If the jailor is the one talking in his channel
                 if m.channel == player.channel and m.author == player.member:
                     if m.content.lower() == "execute":
-                        self.target.kill(player)
+                        target.kill(player)
                         game.ctx.create_task(
-                            game.jail.set_permissions(
-                                self.target.member, send_messages=False
-                            )
-                        )
-                        game.ctx.create_task(
-                            game.jail.send("The Jailor has executed you!")
+                            target.channel.send("The Jailor has executed you!")
                         )
                         return True
                     else:
-                        game.ctx.create_task(game.jail_webhook.send(m.content))
+                        game.ctx.create_task(
+                            target.channel.send(f"Jailor: {m.content}")
+                        )
                 # If the jailed is the one talking in the jail channel
-                elif m.channel == game.jail and m.author == self.target.member:
+                elif m.channel == target.channel and m.author == target.member:
                     game.ctx.create_task(
-                        player.channel.send(f"{self.target.member.name}: {m.content}")
+                        player.channel.send(f"{target.member.name}: {m.content}")
                     )
 
                 return False
 
             await game.ctx.bot.wait_for("message", check=check)
-
-    async def unjail(self, game: MafiaGame):
-        member = self.target.member
-        await asyncio.sleep(game._config.night_length)
-        self.target = None
-        await game.jail.set_permissions(member, read_messages=False)
 
 
 class PI(Citizen):
@@ -260,7 +272,7 @@ class PI(Citizen):
 
         # Now compare the two people
         if (player1.is_citizen and player2.is_citizen) or (
-                player1.is_mafia and player2.is_mafia
+            player1.is_mafia and player2.is_mafia
         ):
             await player.channel.send(
                 f"{player1.member.mention} and {player2.member.mention} have the same alignment"
@@ -410,9 +422,9 @@ class Survivor(Independent):
 
         def check(p):
             return (
-                    p.message_id == msg.id
-                    and p.user_id == player.member.id
-                    and str(p.emoji) == "\N{THUMBS UP SIGN}"
+                p.message_id == msg.id
+                and p.user_id == player.member.id
+                and str(p.emoji) == "\N{THUMBS UP SIGN}"
             )
 
         await game.ctx.bot.wait_for("raw_reaction_add", check=check)
@@ -430,14 +442,13 @@ class Jester(Independent):
 
     def win_condition(self, game: MafiaGame, player: Player):
         return player.lynched or (
-                player.dead and player.attacked_by and not player.attacked_by.is_mafia
+            player.dead and player.attacked_by and not player.attacked_by.is_mafia
         )
 
 
 class Executioner(Independent):
     id = 152
     limit = 1
-    target = None
     defense_type = DefenseType.basic
     short_description = "Your goal is to get your target lynched"
     description = (
@@ -512,13 +523,7 @@ __special_mafia__ = (Janitor, Disguiser)
 __special_citizens__ = (Doctor, Sheriff, PI, Jailor, Lookout)
 __special_independents__ = (Jester, Executioner, Arsonist, Survivor)
 
-
-def setup(bot):
-    bot.role_mapping = {"Mafia": Mafia, "Citizen": Citizen}
-    bot.role_mapping.update(**{c.__name__: c for c in __special_mafia__})
-    bot.role_mapping.update(**{c.__name__: c for c in __special_citizens__})
-    bot.role_mapping.update(**{c.__name__: c for c in __special_independents__})
-
-
-def teardown(bot):
-    del bot.role_mapping
+role_mapping = {"Mafia": Mafia, "Citizen": Citizen}
+role_mapping.update(**{c.__name__: c for c in __special_mafia__})
+role_mapping.update(**{c.__name__: c for c in __special_citizens__})
+role_mapping.update(**{c.__name__: c for c in __special_independents__})

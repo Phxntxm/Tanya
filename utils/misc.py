@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import asyncio
 import re
-import traceback
 import typing
 
 import discord
@@ -10,38 +8,16 @@ from discord.ext import commands
 from fuzzywuzzy import process
 
 if typing.TYPE_CHECKING:
-    from extensions.game import MafiaGame
-    from extensions.players import Player
-    from extensions.roles import Role
-
-
-class CustomContext(commands.Context):
-    def create_task(self, *args, **kwargs):
-        """A shortcut to creating a task with a callback of logging the error"""
-        task = self.bot.loop.create_task(*args, **kwargs)
-        task.add_done_callback(self._log_future_error)
-
-        return task
-
-    def _log_future_error(self, future: asyncio.Future):
-        # Technically the task housing the task this callback is for is what's
-        # usually cancelled, therefore cancelled() doesn't actually catch this case
-        try:
-            if future.cancelled():
-                return
-            elif exc := future.exception():
-                self.bot.loop.create_task(self.bot.log_error(exc, self.bot, self))
-        except asyncio.CancelledError:
-            return
+    from mafia import MafiaGame, Player, Role
 
 
 def hex_to_players(
-        num: str, all_roles: typing.List[Role]
-) -> typing.Tuple[int, int, int, typing.List[Role]]:
+    hex_repr: str, all_roles: typing.List[typing.Type[Role]]
+) -> typing.Tuple[int, int, int, typing.List[typing.Type[Role]]]:
     """Takes in a hex number and converts it to a configuration
     based on the amount of special roles it specifies"""
 
-    num = int(num, 16)
+    num = int(hex_repr, 16)
     roles_to_play = []
     # The first 3 sets of 2 of the hex represent the min, max, and amount of mafia
     min_players = num & 0xFF
@@ -72,14 +48,14 @@ def hex_to_players(
 
 
 def players_to_hex(
-        roles: typing.List[Role],
-        amount_of_mafia: int,
-        min_players: int = None,
-        max_players: int = None,
+    roles: typing.List[typing.Type[Role]],
+    amount_of_mafia: int,
+    min_players: int = None,
+    max_players: int = None,
 ) -> str:
     """Takes in a list of players and produces a hex configuration. If min and max
     are not provided, then min and max will be the amount of roles"""
-    mapping = {}
+    mapping: typing.Dict[int, int] = {}
     min_players = min_players if min_players else len(roles)
     max_players = max_players if max_players else len(roles)
 
@@ -144,7 +120,7 @@ def min_max_check(ctx: commands.Context, min: int, max: int) -> typing.Callable:
     return check
 
 
-def nomination_check(game: MafiaGame, nominations: dict) -> typing.Callable:
+def nomination_check(game: MafiaGame, nominations: typing.Dict) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Ignore if not in channel we want
         if m.channel != game.chat:
@@ -158,7 +134,7 @@ def nomination_check(game: MafiaGame, nominations: dict) -> typing.Callable:
         # Try to get the player
         try:
             content = m.content.split(">>nominate ")[1]
-            player = game.ctx.bot.get_mafia_player(game, content)
+            player = get_mafia_player(game, content)
             nominator = discord.utils.get(game.players, member=m.author)
         except commands.MemberNotFound:
             return False
@@ -178,11 +154,11 @@ def nomination_check(game: MafiaGame, nominations: dict) -> typing.Callable:
 
 
 def private_channel_check(
-        game: MafiaGame,
-        player: Player,
-        mapping: typing.Dict[int, str],
-        can_choose_self: bool = False,
-) -> typing.Callable:
+    game: MafiaGame,
+    player: Player,
+    mapping: typing.Dict[int, str],
+    can_choose_self: bool = False,
+) -> typing.Callable[[discord.Message], bool]:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
         if m.channel != player.channel:
@@ -192,8 +168,8 @@ def private_channel_check(
         # Now make sure it's a num, and in our mapping
         # Set the player for use after
         try:
-            p = mapping[int(m.content)]
-            p = game.ctx.bot.get_mafia_player(game, p)
+            player_id = mapping[int(m.content)]
+            p: Player = get_mafia_player(game, player_id)
         except (ValueError, KeyError, commands.MemberNotFound):
             return False
         # Check the choosing self
@@ -202,11 +178,13 @@ def private_channel_check(
         elif p is not None:
             return True
 
+        return False
+
     return check
 
 
 def mafia_kill_check(
-        game: MafiaGame, mapping: typing.Dict[int, str]
+    game: MafiaGame, mapping: typing.Dict[int, str]
 ) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
@@ -216,8 +194,8 @@ def mafia_kill_check(
             return False
         # Set the player for use after
         try:
-            p = mapping[int(m.content)]
-            p = game.ctx.bot.get_mafia_player(game, p)
+            player_id = mapping[int(m.content)]
+            p = get_mafia_player(game, player_id)
         except (ValueError, KeyError, commands.MemberNotFound):
             return False
         else:
@@ -227,58 +205,3 @@ def mafia_kill_check(
                 return True
 
     return check
-
-
-async def log_error(error: Exception, bot: commands.Bot, ctx: commands.Context = None):
-    # Format the error message
-    fmt = f"""```
-{''.join(traceback.format_tb(error.__traceback__)).strip()}
-{error.__class__.__name__}: {error}```"""
-    # Add the command if ctx is given
-    if ctx is not None:
-        fmt = f"Command = {discord.utils.escape_markdown(ctx.message.clean_content).strip()}\n{fmt}"
-    # If the channel has been set, use it
-    if isinstance(bot.error_channel, discord.TextChannel):
-        await bot.error_channel.send(fmt)
-    # Otherwise if it hasn't been set yet, try to set it
-    if isinstance(bot.error_channel, int):
-        channel = bot.get_channel(bot.error_channel)
-        if channel is not None:
-            bot.error_channel = channel
-            await bot.error_channel.send(fmt)
-        # If we can't find the channel yet (before ready) just send to file
-        else:
-            fmt = fmt.strip("`")
-            with open("error_log", "a") as f:
-                print(fmt, file=f)
-    # Otherwise just send to file
-    else:
-        fmt = fmt.strip("`")
-        with open("error_log", "a") as f:
-            print(fmt, file=f)
-
-
-def setup(bot):
-    bot.log_error = log_error
-    bot.min_max_check = min_max_check
-    bot.to_keycap = to_keycap
-    bot.get_mafia_player = get_mafia_player
-    bot.nomination_check = nomination_check
-    bot.private_channel_check = private_channel_check
-    bot.mafia_kill_check = mafia_kill_check
-    bot.custom_context = CustomContext
-    bot.hex_to_players = hex_to_players
-    bot.players_to_hex = players_to_hex
-
-
-def teardown(bot):
-    del bot.log_error
-    del bot.min_max_check
-    del bot.to_keycap
-    del bot.get_mafia_player
-    del bot.nomination_check
-    del bot.private_channel_check
-    del bot.mafia_kill_check
-    del bot.custom_context
-    del bot.hex_to_players
-    del bot.players_to_hex
