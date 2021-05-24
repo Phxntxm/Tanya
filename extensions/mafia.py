@@ -13,10 +13,7 @@ def stop_check():
     def predicate(ctx):
         game = ctx.bot.get_cog("Mafia").games.get(ctx.guild.id)
 
-        if game and (
-            ctx.author.guild_permissions.manage_channels
-            or ctx.author == game[1].ctx.author
-        ):
+        if game and (ctx.author.guild_permissions.manage_channels or ctx.author == game[1].ctx.author):
             return True
         return False
 
@@ -27,9 +24,7 @@ class RolesSource(menus.ListPageSource):
     def __init__(self, data: typing.List[Player]):
         super().__init__(data, per_page=10)
 
-    async def format_page(
-        self, menu: menus.Menu, entries: typing.List[typing.Type[Role]]
-    ):
+    async def format_page(self, menu: menus.Menu, entries: typing.List[typing.Type[Role]]):
         embed = discord.Embed(
             title="Roles",
             color=0xFF0000,
@@ -41,9 +36,7 @@ class RolesSource(menus.ListPageSource):
             icon_url=menu.ctx.bot.user.avatar_url,
         )
         for role in entries:
-            embed.add_field(
-                name=role.__name__, value=role.short_description, inline=False
-            )
+            embed.add_field(name=role.__name__, value=role.short_description, inline=False)
 
         embed.set_footer(text=f"Page {menu.current_page + 1}/{self._max_pages}")
         return embed
@@ -124,11 +117,7 @@ class Mafia(Cog):
     @mafia.command(name="roles")
     async def mafia_roles(self, ctx: Context):
         """Displays the available custom roles"""
-        roles = [
-            role
-            for name, role in role_mapping.items()
-            if name not in ("Mafia", "Citizens")
-        ]
+        roles = [role for name, role in role_mapping.items() if name not in ("Mafia", "Citizens")]
         menu = menus.MenuPages(source=RolesSource(roles), clear_reactions_after=True)
         await menu.start(ctx)
 
@@ -155,9 +144,7 @@ class Mafia(Cog):
 
     @mafia_start.error
     async def clean_mafia_games(self, ctx: Context, error: BaseException):
-        if isinstance(
-            error, (commands.MaxConcurrencyReached, commands.CommandOnCooldown)
-        ):
+        if isinstance(error, (commands.MaxConcurrencyReached, commands.CommandOnCooldown)):
             return
 
         game = self.games.get(ctx.guild.id)

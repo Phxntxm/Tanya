@@ -44,9 +44,7 @@ class MafiaPages(menus.ListPageSource):
                 role_type = "Mafia"
             elif role.is_independent:
                 role_type = "Independent"
-            embed.description = (
-                f"{embed.description}{emoji} **{role.__name__}**({role_type}): {amt}\n"
-            )
+            embed.description = f"{embed.description}{emoji} **{role.__name__}**({role_type}): {amt}\n"
         return embed
 
 
@@ -59,19 +57,13 @@ class MafiaMenu(menus.MenuPages):
     def allowed_mafia(self):
         """The amount of mafia roles allowed to add"""
         # Subtract an extra one, because one of them HAS to be Godfather
-        return (
-            self.amount_of_mafia
-            - sum([v for k, v in self.source.entries if k.is_mafia])
-            - 1
-        )
+        return self.amount_of_mafia - sum([v for k, v in self.source.entries if k.is_mafia]) - 1
 
     @property
     def allowed_non_mafia(self):
         """The amount of non-mafia roles allowed to add"""
         return (
-            self.amount_of_players
-            - self.amount_of_mafia
-            - sum([v for k, v in self.source.entries if not k.is_mafia])
+            self.amount_of_players - self.amount_of_mafia - sum([v for k, v in self.source.entries if not k.is_mafia])
         )
 
     async def finalize(self, timed_out):
@@ -158,9 +150,7 @@ class MafiaMenu(menus.MenuPages):
             return
 
         msg = await self.ctx.send(f"{role.__name__}: How many? 0 - {amt_allowed}")
-        answer = await self.ctx.bot.wait_for(
-            "message", check=min_max_check(self.ctx, 0, amt_allowed)
-        )
+        answer = await self.ctx.bot.wait_for("message", check=min_max_check(self.ctx, 0, amt_allowed))
         # Delete and set answer
         self.source.entries[index] = (role, int(answer.content))
         await self.ctx.channel.delete_messages([msg, answer])

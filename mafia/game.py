@@ -94,9 +94,7 @@ class MafiaGame:
 
     @property
     def total_citizens(self) -> int:
-        return sum(
-            1 for player in self.players if player.is_citizen and not player.dead
-        )
+        return sum(1 for player in self.players if player.is_citizen and not player.dead)
 
     @property
     def total_alive(self) -> int:
@@ -118,9 +116,7 @@ class MafiaGame:
         async with self.chat.typing():
             buffer = await create_night_image(self)
             await self.info.send(file=discord.File(buffer, filename="night.png"))
-            await self.chat.send(
-                "It's nighttime! Check your private channels if you have a task tonight"
-            )
+            await self.chat.send("It's nighttime! Check your private channels if you have a task tonight")
 
     async def day_notification(self, *deaths: Player):
         """Creates a notification image with all of the overnight deaths"""
@@ -208,24 +204,14 @@ class MafiaGame:
             chat_overwrites[p.member] = can_read_overwrites
             info_overwrites[p.member] = can_read_overwrites
 
-        self.info: discord.TextChannel = await category.create_text_channel(
-            "info", overwrites=info_overwrites
-        )
-        self.chat: discord.TextChannel = await category.create_text_channel(
-            "chat", overwrites=chat_overwrites
-        )
-        self.dead_chat: discord.TextChannel = await category.create_text_channel(
-            "dead", overwrites=dead_overwrites
-        )
-        self.mafia_chat: discord.TextChannel = await category.create_text_channel(
-            "mafia", overwrites=mafia_overwrites
-        )
+        self.info: discord.TextChannel = await category.create_text_channel("info", overwrites=info_overwrites)
+        self.chat: discord.TextChannel = await category.create_text_channel("chat", overwrites=chat_overwrites)
+        self.dead_chat: discord.TextChannel = await category.create_text_channel("dead", overwrites=dead_overwrites)
+        self.mafia_chat: discord.TextChannel = await category.create_text_channel("mafia", overwrites=mafia_overwrites)
 
     async def _setup_category(self):
         # Create category the channels will be in first
-        self.category = category = await self.ctx.guild.create_category_channel(
-            "MAFIA GAME"
-        )
+        self.category = category = await self.ctx.guild.create_category_channel("MAFIA GAME")
         # Make sure the default channels are setup properly
         await self._setup_category_channels(category)
 
@@ -248,9 +234,7 @@ class MafiaGame:
                 p.member: can_read_overwrites,
             }
             # Create their channel
-            channel = await category.create_text_channel(
-                p.member.name, overwrites=overwrites
-            )
+            channel = await category.create_text_channel(p.member.name, overwrites=overwrites)
             # Set it on the player object
             p.set_channel(channel)
             # Send them their startup message and pin it
@@ -276,9 +260,7 @@ class MafiaGame:
             "Starting new game of Mafia! Please first select how many players "
             "you want to allow to play the game at maximum?"
         )
-        answer = await ctx.bot.wait_for(
-            "message", check=min_max_check(ctx, minimum_players_needed, 25)
-        )
+        answer = await ctx.bot.wait_for("message", check=min_max_check(ctx, minimum_players_needed, 25))
         max_players = int(answer.content)
         # Min players
         await ctx.send("How many players at minimum?")
@@ -290,9 +272,7 @@ class MafiaGame:
 
         return min_players, max_players
 
-    async def _setup_players(
-        self, min_players: int, max_players: int
-    ) -> typing.List[discord.Member]:
+    async def _setup_players(self, min_players: int, max_players: int) -> typing.List[discord.Member]:
         wait_length_for_players_to_join = 60
         ctx = self.ctx
         game_players: typing.Set[int] = set()
@@ -324,16 +304,12 @@ class MafiaGame:
                 while True:
                     # We want to start timeout if we've reached min players, but haven't
                     # already started it
-                    start_timeout = (
-                        len(game_players) >= min_players and timer_not_started
-                    )
+                    start_timeout = len(game_players) >= min_players and timer_not_started
                     if start_timeout:
                         timer_not_started = False
                         embed.description = f"{embed.description}\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players ({max_players}) reached"
                         ctx.create_task(joining_over())
-                    embed.set_footer(
-                        text=f"{len(game_players)}/{min_players} Needed to join"
-                    )
+                    embed.set_footer(text=f"{len(game_players)}/{min_players} Needed to join")
                     await msg.edit(embed=embed)
                     await asyncio.sleep(2)
 
@@ -362,9 +338,7 @@ class MafiaGame:
             done, pending = await asyncio.wait(
                 [
                     ctx.create_task(ctx.bot.wait_for("raw_reaction_add", check=check)),
-                    ctx.create_task(
-                        ctx.bot.wait_for("raw_reaction_remove", check=check)
-                    ),
+                    ctx.create_task(ctx.bot.wait_for("raw_reaction_remove", check=check)),
                     ctx.create_task(update_embed()),
                     ctx.create_task(join_event.wait()),
                 ],
@@ -407,23 +381,15 @@ class MafiaGame:
     async def _setup_amount_mafia(self, players: int) -> int:
         ctx = self.ctx
         # Get amount of Mafia
-        await ctx.send(
-            f"How many mafia members (including special mafia members; Between 1 and {int(players / 2)})?"
-        )
-        answer = await ctx.bot.wait_for(
-            "message", check=min_max_check(ctx, 1, int(players / 2))
-        )
+        await ctx.send(f"How many mafia members (including special mafia members; Between 1 and {int(players / 2)})?")
+        answer = await ctx.bot.wait_for("message", check=min_max_check(ctx, 1, int(players / 2)))
         amount_of_mafia = int(answer.content)
 
         return amount_of_mafia
 
-    async def _setup_special_roles(
-        self, players: int, mafia: int
-    ) -> typing.List[typing.Tuple[typing.Type[Role], int]]:
+    async def _setup_special_roles(self, players: int, mafia: int) -> typing.List[typing.Tuple[typing.Type[Role], int]]:
         ctx = self.ctx
-        amount_of_specials = [
-            (v, 0) for k, v in role_mapping.items() if k not in ["Mafia", "Citizen"]
-        ]
+        amount_of_specials = [(v, 0) for k, v in role_mapping.items() if k not in ["Mafia", "Citizen"]]
         menu = MafiaMenu(source=MafiaPages(amount_of_specials, ctx))
 
         menu.amount_of_players = players
@@ -435,24 +401,16 @@ class MafiaGame:
     # During game channel modification
 
     async def lock_chat_channel(self):
-        await self.chat.set_permissions(
-            self._alive_game_role, overwrite=cannot_send_overwrites
-        )
+        await self.chat.set_permissions(self._alive_game_role, overwrite=cannot_send_overwrites)
 
     async def unlock_chat_channel(self):
-        await self.chat.set_permissions(
-            self._alive_game_role, overwrite=can_send_overwrites
-        )
+        await self.chat.set_permissions(self._alive_game_role, overwrite=can_send_overwrites)
 
     async def lock_mafia_channel(self):
-        await self.mafia_chat.set_permissions(
-            self._alive_game_role, overwrite=cannot_send_overwrites
-        )
+        await self.mafia_chat.set_permissions(self._alive_game_role, overwrite=cannot_send_overwrites)
 
     async def unlock_mafia_channel(self):
-        await self.mafia_chat.set_permissions(
-            self._alive_game_role, overwrite=can_send_overwrites
-        )
+        await self.mafia_chat.set_permissions(self._alive_game_role, overwrite=can_send_overwrites)
 
     # Pre game entry methods
 
@@ -462,21 +420,14 @@ class MafiaGame:
         # Get/create the alive role
         role = discord.utils.get(ctx.guild.roles, name=self._alive_game_role_name)
         if role is None:
-            self._alive_game_role = await ctx.guild.create_role(
-                name=self._alive_game_role_name, hoist=True
-            )
+            self._alive_game_role = await ctx.guild.create_role(name=self._alive_game_role_name, hoist=True)
         else:
             self._alive_game_role = role
 
         # Config is already set
         if self._preconfigured_config:
             # Convert hex to the stuff we care about
-            (
-                amount_of_mafia,
-                min_players,
-                max_players,
-                special_roles,
-            ) = hex_to_players(
+            (amount_of_mafia, min_players, max_players, special_roles,) = hex_to_players(
                 self._preconfigured_config,
                 # A list of only the special roles
                 [v for k, v in role_mapping.items() if k not in ["Mafia", "Citizen"]],
@@ -492,9 +443,7 @@ class MafiaGame:
             min_players, max_players = await self._setup_amount_players()
             self._members = await self._setup_players(min_players, max_players)
             amount_of_mafia = await self._setup_amount_mafia(len(self._members))
-            special_roles = await self._setup_special_roles(
-                len(self._members), amount_of_mafia
-            )
+            special_roles = await self._setup_special_roles(len(self._members), amount_of_mafia)
             # Convert the tuple of player, amount to just a list of all roles
             special_roles = [role for (role, amt) in special_roles for _ in range(amt)]
             # Get hex to allow them to use this setup in the future
@@ -523,9 +472,7 @@ class MafiaGame:
             query = "INSERT INTO games (guild_id, config) VALUES ($1, $2) RETURNING id"
             self.id = await conn.fetchval(query, self.ctx.guild.id, conf)
 
-            batched = [
-                (self.id, player.member.id, player.role.id) for player in self.players
-            ]
+            batched = [(self.id, player.member.id, player.role.id) for player in self.players]
             query = "INSERT INTO players VALUES ($1, $2, $3)"
             await conn.executemany(query, batched)
 
@@ -561,9 +508,7 @@ class MafiaGame:
             return
 
         # Start everyones day tasks
-        tasks = [
-            self.ctx.create_task(p.day_task(self)) for p in self.players if not p.dead
-        ]
+        tasks = [self.ctx.create_task(p.day_task(self)) for p in self.players if not p.dead]
         await self._day_discussion_phase()
         # We'll cycle nomination -> voting up to three times
         # if no one gets nominated, or a vote is successful we'll break out
@@ -611,18 +556,14 @@ class MafiaGame:
                 await player.channel.send(protector.save_message)
                 # If the killer was mafia, we also want to notify them of the saving
                 if killer.is_mafia:
-                    await self.mafia_chat.send(
-                        f"{player.member.name} was saved last night from your attack!"
-                    )
+                    await self.mafia_chat.send(f"{player.member.name} was saved last night from your attack!")
                 continue
 
-            batched_kills.append((self.id, killer.member.id, player.member.id, self._day-1, killer == player))
+            batched_kills.append((self.id, killer.member.id, player.member.id, self._day - 1, killer == player))
 
             # If they were cleaned, then notify the cleaner
             if cleaner:
-                await cleaner.channel.send(
-                    f"You cleaned {player.member.name} up, their role was {player}"
-                )
+                await cleaner.channel.send(f"You cleaned {player.member.name} up, their role was {player}")
                 continue
 
             # Now if we're here it's a kill that wasn't stopped/cleaned
@@ -637,9 +578,7 @@ class MafiaGame:
 
             # Remove their alive role and let them see dead chat
             await player.member.remove_roles(self._alive_game_role)
-            await self.dead_chat.set_permissions(
-                player.member, read_messages=True, send_messages=True
-            )
+            await self.dead_chat.set_permissions(player.member, read_messages=True, send_messages=True)
             # Now if they were godfather, choose new godfather
             if player.is_godfather:
                 await self.choose_godfather()
@@ -672,9 +611,7 @@ class MafiaGame:
     async def _day_discussion_phase(self):
         """Handles the discussion phase of the day"""
         await self.unlock_chat_channel()
-        await self.chat.send(
-            "Discussion time! You have 45 seconds before nomination will start"
-        )
+        await self.chat.send("Discussion time! You have 45 seconds before nomination will start")
         await asyncio.sleep(45)
 
     async def _day_nomination_phase(self) -> typing.Optional[Player]:
@@ -733,9 +670,7 @@ class MafiaGame:
             self.ctx.create_task(m.add_reaction("\N{THUMBS UP SIGN}"))
             return False
 
-        await self.chat.send(
-            "Make your votes now! Send either `Guilty` or `Innocent` to cast your vote"
-        )
+        await self.chat.send("Make your votes now! Send either `Guilty` or `Innocent` to cast your vote")
         try:
             await self.ctx.bot.wait_for("message", check=check, timeout=30)
         except asyncio.TimeoutError:
@@ -745,19 +680,13 @@ class MafiaGame:
         innocent_votes = list(votes.values()).count("innocent")
 
         if guilty_votes > innocent_votes:
-            await self.chat.send(
-                f"{player.member.mention} has been lynched! Votes {guilty_votes} to {innocent_votes}"
-            )
+            await self.chat.send(f"{player.member.mention} has been lynched! Votes {guilty_votes} to {innocent_votes}")
             player.dead = True
             player.lynched = True
             # Remove their permissions from their channel
-            await player.channel.set_permissions(
-                player.member, read_messages=True, send_messages=False
-            )
+            await player.channel.set_permissions(player.member, read_messages=True, send_messages=False)
             if player.is_mafia:
-                await self.mafia_chat.set_permissions(
-                    player.member, read_messages=True, send_messages=False
-                )
+                await self.mafia_chat.set_permissions(player.member, read_messages=True, send_messages=False)
                 # Repick godfather if they were godfather
                 if player.is_godfather:
                     try:
@@ -766,18 +695,14 @@ class MafiaGame:
                     except IndexError:
                         return
             await player.member.remove_roles(self._alive_game_role)
-            await self.dead_chat.set_permissions(
-                player.member, read_messages=True, send_messages=True
-            )
+            await self.dead_chat.set_permissions(player.member, read_messages=True, send_messages=True)
             async with self.ctx.acquire() as conn:
                 query = "INSERT INTO kills VALUES ($1, null, $2, $3, false)"
                 await conn.execute(query, self.id, player.member.id, self._day)
 
             return True
         else:
-            await self.chat.send(
-                f"{player.member.mention} has been spared! Votes {guilty_votes} to {innocent_votes}"
-            )
+            await self.chat.send(f"{player.member.mention} has been spared! Votes {guilty_votes} to {innocent_votes}")
             return False
 
     async def _night_phase(self):
@@ -792,9 +717,7 @@ class MafiaGame:
             for p in self.players:
                 if p.dead or p.night_role_blocked:
                     continue
-                self.ctx.create_task(
-                    p.channel.send("Night is about to end in 20 seconds")
-                )
+                self.ctx.create_task(p.channel.send("Night is about to end in 20 seconds"))
             await self.mafia_chat.send("Night is about to end in 20 seconds")
             await asyncio.sleep(20)
 
@@ -812,8 +735,7 @@ class MafiaGame:
             await self.mafia_chat.send("The godfather cannot kill tonight!")
         else:
             await self.mafia_chat.send(
-                "**Godfather:** Type the number assigned to a member to kill someone. "
-                f"Alive players are:\n{msg}"
+                "**Godfather:** Type the number assigned to a member to kill someone. " f"Alive players are:\n{msg}"
             )
 
             async def mafia_check() -> None:
@@ -836,9 +758,7 @@ class MafiaGame:
             task = self.ctx.create_task(p.night_task(self))
             tasks.append(task)
 
-        _, pending = await asyncio.wait(
-            tasks, timeout=self._config.night_length, return_when=asyncio.ALL_COMPLETED
-        )
+        _, pending = await asyncio.wait(tasks, timeout=self._config.night_length, return_when=asyncio.ALL_COMPLETED)
         # Cancel pending tasks, times up
         for task in pending:
             task.cancel()
@@ -867,14 +787,10 @@ class MafiaGame:
 
         # Send winners
         winners = self.get_winners()
-        winner_msg = "Winners are:\n{}".format(
-            "\n".join(f"{winner.member.mention} ({winner})" for winner in winners)
-        )
+        winner_msg = "Winners are:\n{}".format("\n".join(f"{winner.member.mention} ({winner})" for winner in winners))
         await self.chat.send(winner_msg, allowed_mentions=AllowedMentions(users=False))
         # Send a message with everyone's roles
-        roles_msg = "\n".join(
-            f"{player.member.mention} ({player})" for player in self.players
-        )
+        roles_msg = "\n".join(f"{player.member.mention} ({player})" for player in self.players)
         await self.ctx.send(
             f"The game is over! Roles were:\n{roles_msg}\n\n{winner_msg}",
             allowed_mentions=AllowedMentions(users=False),
