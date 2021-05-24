@@ -9,8 +9,7 @@ import discord
 from PIL import Image, ImageDraw, ImageFont
 
 if typing.TYPE_CHECKING:
-    from .game import MafiaGame
-    from . import players
+    from mafia import MafiaGame, Player
 
 alpha = None
 # fonts in
@@ -18,13 +17,15 @@ font_28days_title = ImageFont.truetype("./resources/28 Days Later.ttf", size=256
 font_28days = ImageFont.truetype("./resources/28 Days Later.ttf", size=64)
 font_vermillion = ImageFont.truetype("./resources/Vermillion.ttf", size=34)
 
-death_marker = Image.open("./resources/death-marker.png", formats=("png",)).resize((96, 96))
+death_marker = Image.open("./resources/death-marker.png", formats=("png",)).resize(
+    (96, 96)
+)
 
 processes: typing.Dict[int, "GameProcessor"] = {}
 pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="ImageWaiter-")
 
 
-async def create_day_image(game: MafiaGame, deaths: typing.List[players.Player]) -> io.BytesIO:
+async def create_day_image(game: MafiaGame, deaths: typing.List[Player]) -> io.BytesIO:
     if id(game) not in processes:
         # make a new renderer
         parent, child = multiprocessing.Pipe(True)
@@ -37,7 +38,12 @@ async def create_day_image(game: MafiaGame, deaths: typing.List[players.Player])
     else:
         proc = processes[id(game)]
         proc.pipe.send(
-            {"op": 1, "d": [x.member.id for x in deaths], "g": await serialize_game(game, include_avatars=False)})
+            {
+                "op": 1,
+                "d": [x.member.id for x in deaths],
+                "g": await serialize_game(game, include_avatars=False),
+            }
+        )
 
     return await game.ctx.bot.loop.run_in_executor(pool, proc.pipe.recv)
 
@@ -65,14 +71,17 @@ def add_corners(im, rad):
 
     global alpha
     if not alpha:  # cache the alpha layer
-        circle = Image.new('L', (rad * 2, rad * 2), 0)
+        circle = Image.new("L", (rad * 2, rad * 2), 0)
         draw = ImageDraw.Draw(circle)
         draw.ellipse((0, 0, rad * 2, rad * 2), fill=255)
-        alpha = Image.new('L', im.size, 255)
+        alpha = Image.new("L", im.size, 255)
         alpha.paste(circle.crop((0, 0, rad, rad)), (0, 0))
         alpha.paste(circle.crop((0, rad, rad, rad * 2)), (0, im.size[0] - rad))
         alpha.paste(circle.crop((rad, 0, rad * 2, rad)), (128 - rad, 0))
-        alpha.paste(circle.crop((rad, rad, rad * 2, rad * 2)), (im.size[0] - rad, im.size[0] - rad))
+        alpha.paste(
+            circle.crop((rad, rad, rad * 2, rad * 2)),
+            (im.size[0] - rad, im.size[0] - rad),
+        )
 
     im.putalpha(alpha)
     return im.resize((96, 96))  # resize it to a more respectable size
@@ -82,7 +91,7 @@ def round_avatar(avy: io.BytesIO, rad=64) -> Image:
     return add_corners(Image.open(avy, formats=("png",)), rad)
 
 
-async def serialize_player(p: players.Player, ia: bool) -> dict:
+async def serialize_player(p: Player, ia: bool) -> dict:
     if ia:
         b = io.BytesIO()
         await p.member.avatar_url_as(format="png", size=128).save(b)
@@ -93,14 +102,14 @@ async def serialize_player(p: players.Player, ia: bool) -> dict:
         "i": p.member.id,
         "d": p.dead,
         "r": str(p.role),
-        "a": b if ia else None  # noqa
+        "a": b if ia else None,  # noqa
     }
 
 
 async def serialize_game(g: MafiaGame, include_avatars=False) -> dict:
     return {
         "p": [await serialize_player(p, include_avatars) for p in g.players],
-        "d": g._day  # noqa
+        "d": g._day,  # noqa
     }
 
 
@@ -108,19 +117,21 @@ class GameProcessor(multiprocessing.Process):
     def run(self) -> None:
         pipe = self._args[0]  # noqa
         avatars = {}  # cache the avatar images throughout the game
-        data: dict = pipe.recv()  # receives the initial game dump, with the avatars. Avatars won't be sent in later updates
-        game: dict = data['g']
-        for player in game['p']:
+        data: dict = (
+            pipe.recv()
+        )  # receives the initial game dump, with the avatars. Avatars won't be sent in later updates
+        game: dict = data["g"]
+        for player in game["p"]:
             # turns the bytesio into image objects and applies the rounding masks
-            avatars[player['i']] = round_avatar(player['a'])
+            avatars[player["i"]] = round_avatar(player["a"])
 
         while True:
             d = pipe.recv()
-            if d['op'] == 0:  # nighttime images
-                resp = _sync_make_night_image(d['d'])
-            elif d['op'] == 1:  # daytime images
-                game.update(d['g'])
-                deaths = d['d']
+            if d["op"] == 0:  # nighttime images
+                resp = _sync_make_night_image(d["d"])
+            elif d["op"] == 1:  # daytime images
+                game.update(d["g"])
+                deaths = d["d"]
                 resp = _sync_make_day_image(game, deaths, avatars)
             else:
                 raise RuntimeError("unknown opcode")
@@ -134,8 +145,9 @@ def _sync_make_night_image(night: int) -> io.BytesIO:
     raster = ImageDraw.Draw(base)
 
     __w, _ = raster.textsize(f"Night {night}", font=font_28days_title)  # noqa
-    raster.text(((1920 - __w) / 2, 30), f"Night {night}", font=font_28days_title,
-                fill="black")  # noqa center the night #
+    raster.text(
+        ((1920 - __w) / 2, 30), f"Night {night}", font=font_28days_title, fill="black"
+    )  # noqa center the night #
 
     buf = io.BytesIO()
     base.save(buf, format="png")
@@ -144,18 +156,27 @@ def _sync_make_night_image(night: int) -> io.BytesIO:
     return buf
 
 
-def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) -> io.BytesIO:
+def _sync_make_day_image(
+    game: dict, deaths: typing.List[int], avatars: dict
+) -> io.BytesIO:
     base: Image.Image = Image.open("./resources/background-day.png", formats=("png",))
     base = base.resize((1920, 1080)).convert("RGBA")
     raster = ImageDraw.Draw(base)
 
-    alive = list(filter(lambda player: not player['d'], game['p']))
-    dead = list(filter(lambda player: player['d'] and player['i'] not in deaths, game['p']))
+    alive = list(filter(lambda player: not player["d"], game["p"]))
+    dead = list(
+        filter(lambda player: player["d"] and player["i"] not in deaths, game["p"])
+    )
 
     __w, _ = raster.textsize(f"Day {game['d']}", font=font_28days_title)  # noqa
-    raster.text(((1920 - __w) / 2, 30), f"Day {game['d']}", font=font_28days_title,
-                fill="black")  # noqa center the day #
-    raster.text((30, 260), f"Alive Players", font=font_28days, )  # noqa put this above row 1
+    raster.text(
+        ((1920 - __w) / 2, 30), f"Day {game['d']}", font=font_28days_title, fill="black"
+    )  # noqa center the day #
+    raster.text(
+        (30, 260),
+        f"Alive Players",
+        font=font_28days,
+    )  # noqa put this above row 1
 
     row_width = 105  # how far apart each row is
     col_width = 400  # how far apart each column is
@@ -163,11 +184,15 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
 
     def paste_avatar(player: dict, text_fill: str, do_x: bool, show_role: bool):
         nonlocal col, row
-        avy = avatars[player['i']]
+        avy = avatars[player["i"]]
 
         # determine the co-ords based off the column and row
-        x = (30 + (col * col_width), int(330 + (row_width * row)), 30 + avy.size[0] + (col * col_width),
-             int(330 + (row_width * row) + avy.size[1]))
+        x = (
+            30 + (col * col_width),
+            int(330 + (row_width * row)),
+            30 + avy.size[0] + (col * col_width),
+            int(330 + (row_width * row) + avy.size[1]),
+        )
 
         base.paste(avy, x, mask=avy)
         if do_x:
@@ -183,8 +208,10 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
         if show_role:
             # add their role to the nick text
             nick += f"\n\t{player['r']}"
-            t = (x[2] + 20,
-                 int(330 + (row_width * row)))  # don't bother centering as there's 2 lines of text which centers itself
+            t = (
+                x[2] + 20,
+                int(330 + (row_width * row)),
+            )  # don't bother centering as there's 2 lines of text which centers itself
 
         else:
             _, _h = raster.textsize(nick, font=font_vermillion)
@@ -199,7 +226,7 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
 
     if deaths:
         # these are the people who have died today
-        d = [discord.utils.find(lambda pl: pl['i'] == x, game['p']) for x in deaths]
+        d = [discord.utils.find(lambda pl: pl["i"] == x, game["p"]) for x in deaths]
         for p in d:
             # fill certain slots with black text to contrast the background
             fill = "black" if col >= 1 and 3 > row > 0 else "white"
@@ -216,10 +243,19 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
             col += 1
             row = 0
 
-        raster.text((30 + (col * col_width), 260), f"Dead Players", font=font_28days, fill="black")
+        raster.text(
+            (30 + (col * col_width), 260),
+            f"Dead Players",
+            font=font_28days,
+            fill="black",
+        )
         for p in dead:
             # fill certain slots with black text to contrast the background
-            fill = "black" if (col >= 1 and row == 2) or (col == 3 and (row == 0 or row == 2)) else "white"
+            fill = (
+                "black"
+                if (col >= 1 and row == 2) or (col == 3 and (row == 0 or row == 2))
+                else "white"
+            )
             paste_avatar(p, fill, True, True)
 
     buf = io.BytesIO()
