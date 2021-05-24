@@ -26,4 +26,6 @@ class MafiaBot(commands.Bot):
         self, token: str, *, bot: bool = ..., reconnect: bool = ...
     ) -> None:
         self.db = await asyncpg.create_pool(config.db_uri, min_size=1, max_inactive_connection_lifetime=10)
+        from mafia import roles
+        await roles.initialize_db(self)
         return await super().start(token, bot=bot, reconnect=reconnect)
