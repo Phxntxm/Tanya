@@ -2,6 +2,9 @@ import asyncio
 import traceback
 import types
 import typing
+from contextlib import asynccontextmanager
+
+import asyncpg
 
 import config
 import discord
@@ -67,3 +70,11 @@ Guild ID: {self.guild.id}
             if channel is not None:
                 self.error_channel = channel
                 await self.error_channel.send(fmt)
+
+    @asynccontextmanager
+    async def acquire(self) -> asyncpg.Connection:
+        conn = await self.bot.db.acquire()
+        try:
+            yield conn
+        finally:
+            await self.bot.db.release(conn)

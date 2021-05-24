@@ -3,3 +3,4 @@ discord_bots_gg = ""
 owner_ids = []
 prefix = "!"
 error_channel_id = 1
+db_uri = "postgres://user:password@127.0.0.1:5432/database"
