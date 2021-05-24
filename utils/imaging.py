@@ -17,7 +17,9 @@ font_28days_title = ImageFont.truetype("./resources/28 Days Later.ttf", size=256
 font_28days = ImageFont.truetype("./resources/28 Days Later.ttf", size=64)
 font_vermillion = ImageFont.truetype("./resources/Vermillion.ttf", size=34)
 
-death_marker = Image.open("./resources/death-marker.png", formats=("png",)).resize((96, 96))
+death_marker = Image.open("./resources/death-marker.png", formats=("png",)).resize(
+    (96, 96)
+)
 
 processes: typing.Dict[int, "GameProcessor"] = {}
 pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="ImageWaiter-")
@@ -154,13 +156,17 @@ def _sync_make_night_image(night: int) -> io.BytesIO:
     return buf
 
 
-def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) -> io.BytesIO:
+def _sync_make_day_image(
+    game: dict, deaths: typing.List[int], avatars: dict
+) -> io.BytesIO:
     base: Image.Image = Image.open("./resources/background-day.png", formats=("png",))
     base = base.resize((1920, 1080)).convert("RGBA")
     raster = ImageDraw.Draw(base)
 
     alive = list(filter(lambda player: not player["d"], game["p"]))
-    dead = list(filter(lambda player: player["d"] and player["i"] not in deaths, game["p"]))
+    dead = list(
+        filter(lambda player: player["d"] and player["i"] not in deaths, game["p"])
+    )
 
     __w, _ = raster.textsize(f"Day {game['d']}", font=font_28days_title)  # noqa
     raster.text(
@@ -194,9 +200,7 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
             base.paste(death_marker, x, mask=death_marker)
 
         # if they have a nick, format as `nick (name)`, else just the name
-        nick = (
-            f"{player['ni'] + ' ' if player['ni'] else ''}{'(' + player['na'] + ')' if player['ni'] else player['na']}"
-        )
+        nick = f"{player['ni'] + ' ' if player['ni'] else ''}{'(' + player['na'] + ')' if player['ni'] else player['na']}"
         if len(nick) >= 17:
             # nick is too long, shorten it
             nick = nick[:17] + "..."
@@ -247,7 +251,11 @@ def _sync_make_day_image(game: dict, deaths: typing.List[int], avatars: dict) ->
         )
         for p in dead:
             # fill certain slots with black text to contrast the background
-            fill = "black" if (col >= 1 and row == 2) or (col == 3 and (row == 0 or row == 2)) else "white"
+            fill = (
+                "black"
+                if (col >= 1 and row == 2) or (col == 3 and (row == 0 or row == 2))
+                else "white"
+            )
             paste_avatar(p, fill, True, True)
 
     buf = io.BytesIO()

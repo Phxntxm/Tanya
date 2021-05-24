@@ -191,7 +191,9 @@ class Player:
 
     async def unlock_channel(self):
         if self.channel:
-            await self.channel.set_permissions(self.channel.guild.default_role, read_messages=False, send_messages=True)
+            await self.channel.set_permissions(
+                self.channel.guild.default_role, read_messages=False, send_messages=True
+            )
 
     async def day_task(self, game: MafiaGame):
         await self.role.day_task(game, self)
