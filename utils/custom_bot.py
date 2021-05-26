@@ -23,6 +23,10 @@ class MafiaBot(commands.Bot):
 
     async def start(self, token: str, *, bot: bool = ..., reconnect: bool = ...) -> None:
         self.db = await asyncpg.create_pool(config.db_uri, min_size=1, max_inactive_connection_lifetime=10)
+
+        with open("schema.sql") as f:
+            await self.db.execute(f.read())
+
         from mafia import roles
 
         await roles.initialize_db(self)
