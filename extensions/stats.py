@@ -72,7 +72,7 @@ class Stats(commands.Cog):
 
         apost = "'"  # stupid fstrings
         fmt = (
-            f"{'You have' if user == ctx.author else f'{user} has'} played {len(games)} games {'in this server' if only_this_server else ''}, "
+            f"{'You have' if user == ctx.author else f'{user} has'} played {len(games)} games{' in this server' if only_this_server else ''}, "
             f"won {wins} games, killed {len(kills)-suicides} people, committed suicide {suicides} times, and "
             f"been mafia {mafia} times.\n\n{'Your' if user == ctx.author else f'{user.name}{apost}s'} most common role "
             f"{'here ' if only_this_server else ''}is {top_role}"
