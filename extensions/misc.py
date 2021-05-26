@@ -4,6 +4,8 @@ from datetime import datetime
 import discord
 from discord.ext import commands
 
+from mafia import role_mapping
+
 
 class Miscellaneous(commands.Cog):
     @commands.command()
@@ -12,10 +14,10 @@ class Miscellaneous(commands.Cog):
         embed = discord.Embed(
             title="Information",
             description="Welcome to Tanya Degurechaff, a customizable bot for Mafia type games. "
-                        "This bot emulates the mafia style game, similar to Town of Salem but *does* take some liberties to change some things."
-                        "\n\nIn order to start a game, simply use `>>mafia start`. If you want to see some information on the roles available, "
-                        "run `>>mafia roles`. If you want to see information on a specific role run `>>mafia role Doctor` for example."
-                        "To view all available commands, run `>>commands`.",
+            "This bot emulates the mafia style game, similar to Town of Salem but *does* take some liberties to change some things."
+            "\n\nIn order to start a game, simply use `>>mafia start`. If you want to see some information on the roles available, "
+            "run `>>mafia roles`. If you want to see information on a specific role run `>>mafia role Doctor` for example."
+            "To view all available commands, run `>>commands`.",
             color=0xFF0000,
             timestamp=datetime.utcnow(),
         )
@@ -61,7 +63,7 @@ class Miscellaneous(commands.Cog):
 Python version: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}
 Discord version: {discord.__version__}
 Games playing: {len(ctx.bot.get_cog("Mafia").games)}
-Custom roles implemented: {len(ctx.bot.role_mapping)}
+Custom roles implemented: {len(role_mapping)}
 Guilds: {len(ctx.bot.guilds)}
 """
         embed = discord.Embed(

@@ -578,9 +578,9 @@ class MafiaGame:
             # Don't care about already dead players
             if player.dead:
                 continue
-            player.cleanup_attrs()
             # If they weren't killed, we don't care
             if not killer:
+                player.cleanup_attrs()
                 continue
 
             # If they were protected, then let them know
@@ -596,16 +596,16 @@ class MafiaGame:
                     await self.mafia_chat.send(
                         f"{player.member.name} was saved last night from your attack!"
                     )
+                player.cleanup_attrs()
                 continue
 
             # If they were cleaned, then notify the cleaner
             if cleaner:
                 await cleaner.channel.send(
-                    f"You cleaned {player.member.name} up, their role was {player}"
+                    f"You cleaned {player.member.name}'s dead body up, their role was {player}"
                 )
-                continue
 
-            # Now if we're here it's a kill that wasn't stopped/cleaned
+            # Now if we're here it's a kill that wasn't stopped
             player.dead = True
             # Check if it's a suicide or not
             if player == killer:

@@ -18,13 +18,13 @@ class ErrorHandler(commands.Cog):
             fmt = f"Please provide a valid argument to pass to the command: {error}"
             await ctx.send(fmt)
         elif isinstance(
-                error, (commands.CommandOnCooldown, commands.MaxConcurrencyReached)
+            error, (commands.CommandOnCooldown, commands.MaxConcurrencyReached)
         ):
             await ctx.message.add_reaction("\U0000274c")
         elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send("This command must be ran in a guild")
         else:
-            await ctx.bot.log_error(error, ctx.bot, ctx)
+            await ctx.log_error(error)
 
 
 def setup(bot):

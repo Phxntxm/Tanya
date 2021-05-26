@@ -270,18 +270,3 @@ def cleanup_game(game: MafiaGame):
     if g_id in processes:
         proc = processes.pop(g_id)
         proc.terminate()
-
-
-def setup(bot):
-    bot.create_day_image = create_day_image
-    bot.create_night_image = create_night_image
-    bot.cleanup_imaging = cleanup_game
-
-
-def teardown(bot):
-    del bot.create_day_image
-    del bot.create_night_image
-    del bot.cleanup_imaging
-    for proc in processes.values():
-        # force a cleanup of any lingering renderers
-        proc.terminate()

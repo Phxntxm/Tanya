@@ -1,26 +1,22 @@
 import multiprocessing
-import types
-import typing
 from glob import glob
 
 import discord
 from discord.ext import commands
 
 import config
-from utils import Cog, Context
-
-intents = discord.Intents(
-    guild_messages=True,
-    guild_reactions=True,
-    guilds=True,
-)
+from utils import Context
 
 
 class MafiaBot(commands.Bot):
     def __init__(self):
         super().__init__(
             command_prefix=commands.when_mentioned_or(config.prefix),
-            intents=intents,
+            intents=discord.Intents(
+                guild_messages=True,
+                guild_reactions=True,
+                guilds=True,
+            ),
             owner_ids=config.owner_ids,
             help_command=commands.DefaultHelpCommand(
                 command_attrs={"name": "commands", "aliases": ["command"]}
