@@ -64,10 +64,10 @@ class Stats(commands.Cog):
         wins = condition(lambda row: row["win"], games)
         suicides = condition(lambda row: row["suicide"], kills)
         mafia = condition(lambda row: row["role"] == "Mafia", games)
-        roles = collections.Counter(*(x['role'] for x in games))
+        roles = collections.Counter(*(x["role"] for x in games))
         top_role = roles.most_common(1)[0]
 
-        apost = "'" # stupid fstrings
+        apost = "'"  # stupid fstrings
         fmt = (
             f"{'You have' if user == ctx.author else f'{user} has'} played {len(games)} games {'in this server' if only_this_server else ''}, "
             f"won {wins} games, killed {len(kills)-suicides} people, committed suicide {suicides} times, and "
