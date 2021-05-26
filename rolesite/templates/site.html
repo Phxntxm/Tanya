@@ -1,0 +1,58 @@
+<html>
+
+<head>
+    <style>
+        body {
+            background-color: powderblue;
+        }
+
+        .role-inputs {
+            width: 40px;
+            margin-right: 10px;
+        }
+    </style>
+
+    <title>
+        Mafia custom roles
+    </title>
+</head>
+
+<body>
+    <table id="roles-table">
+        <script>
+            document.body.onload = addRoles;
+
+            function addRoles() {
+                var count = 0;
+                var table = document.getElementById("roles-table");
+                var row = document.createElement("tr");
+                var data = document.createElement("td");
+                var input = document.createElement("input");
+                input.min = 0;
+                input.max = 25;
+                input.type = "number";
+                input.className = "role-inputs";
+                input.id = "role-input-" + count;
+                input.defaultValue = 0;
+                var value = document.createElement("label");
+                value.id = "role-label-" + count;
+                value.innerText = "Custom Role 1";
+
+                // input.addEventListener("input", updateSlider)
+
+                // function updateSlider(e) {
+                //     e.target.parentElement.children[1].innerText = e.target.value;
+                // }
+
+                data.appendChild(input);
+                data.appendChild(value);
+                row.appendChild(data);
+                table.appendChild(row);
+            }
+        </script>
+    </table>
+    <script>
+    </script>
+</body>
+
+</html>

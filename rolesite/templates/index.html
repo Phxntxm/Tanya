@@ -1,0 +1,120 @@
+<html>
+
+<head>
+    <style>
+        #roles,
+        #misc,
+        #config {
+            width: 75%;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 50px;
+        }
+
+        #config-input {
+            width: 100%
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+        }
+
+        .role-input,
+        .misc-input {
+            width: 35px;
+            margin-right: 20px;
+            margin-left: 20px;
+        }
+    </style>
+
+    <title>
+        Mafia custom roles
+    </title>
+</head>
+
+<body>
+    <table id="misc">
+        <tr>
+            <td>
+                <input type="number" min=3 max=25 value=3 id="min-players-input" class="misc-input"
+                    oninput="changeConfig();" onclick="this.select();">
+                <label class="role-label">Mininum Players</label>
+            </td>
+            <td>
+                <input type="number" min=3 max=25 value=3 id="max-players-input" class="misc-input"
+                    oninput="changeConfig();" onclick="this.select();">
+                <label class="role-label">Maximum Players</label>
+            </td>
+            <td>
+                <input type="number" min=1 max=25 value=1 id="mafia-input" class="misc-input" oninput="changeConfig();"
+                    onclick="this.select();">
+                <label class="role-label">Mafia</label>
+            </td>
+        </tr>
+    </table>
+    <table id="roles">
+        <tr>
+            {% for role in roles %}
+            <td>
+                <input type="number" min=0 max=25 role-id="{{role[1]}}" value=0 id="role-input-{{loop.index}}"
+                    class="role-input" oninput="changeConfig();" onclick="this.select();">
+                <label class="role-label">{{role[0]}}</label>
+            </td>
+            {% if loop.index is divisibleby(4) %}
+        </tr>
+        <tr>
+            {% endif %}
+            {% endfor %}
+        </tr>
+    </table>
+    <div id="config">
+        <label>Config ID:</label>
+        <input type="text" readonly=true onclick="this.select();" value="0" id="config-input">
+    </div>
+    <script>
+        document.body.onload = changeConfig();
+
+        function changeConfig() {
+            var inputs = document.getElementsByClassName("role-input");
+            var hex = "";
+            var count = 0;
+
+            var min_players = document.getElementById("min-players-input");
+            var max_players = document.getElementById("max-players-input");
+            var mafia = document.getElementById("mafia-input");
+
+            if (mafia > Math.floor(max_players / 2)) {
+                mafia.value = Math.floor(max_players / 2)
+            }
+
+            hex += parseInt(mafia.value).toString(16).padStart(2, 0);
+            hex += parseInt(max_players.value).toString(16).padStart(2, 0);
+            hex += parseInt(min_players.value).toString(16).padStart(2, 0);
+
+            for (i = 0; i < inputs.length; i++) {
+                var roleId = parseInt(inputs[i].getAttribute("role-id"));
+                var amount = parseInt(inputs[i].value);
+                console.log("Adding" + amount);
+                count += amount;
+
+                if (amount > 0) {
+                    hex = amount.toString(16).padStart(2, 0) + roleId.toString(16).padStart(2, 0) + hex;
+                }
+
+            }
+            if (count > parseInt(max_players.value)) {
+                console.log(count);
+                console.log(max_players.value);
+                hex = "#INVALID; CUSTOM ROLES > MAX PLAYERS";
+            }
+            if (parseInt(min_players.value) > parseInt(max_players.value)) {
+                hex = "INVALID; MAX PLAYERS > MIN PLAYERS"
+            }
+            document.getElementById("config-input").value = hex;
+        }
+    </script>
+</body>
+
+</html>
