@@ -525,23 +525,26 @@ async def initialize_db(bot: MafiaBot):
 
     for x in data:
         r = role_mapping[x["name"]]
-        r.id = x['id']
-        if x['alignment'] == 1:
+        r.id = x["id"]
+        if x["alignment"] == 1:
             r.is_citizen = True
-        elif x['alignment'] == 2:
+        elif x["alignment"] == 2:
             r.is_independent = True
         else:
             r.is_mafia = True
 
-        r.attack_type = AttackType(x['attack_level'])
-        r.defense_type = DefenseType(x['defence_level'])
+        r.attack_type = AttackType(x["attack_level"])
+        r.defense_type = DefenseType(x["defence_level"])
 
     if not all(x.id is not None for x in role_mapping.values()):
         async with bot.db.acquire() as conn:
             for x in role_mapping.values():
                 if x.id is None:
-                    x.id = await conn.fetchval("INSERT INTO roles (name, alignment, attack_level, defence_level) VALUES ($1, $2, $3, $4) RETURNING id",
-                                               x.name, 1 if x.is_citizen else (2 if x.is_independent else 3))
+                    x.id = await conn.fetchval(
+                        "INSERT INTO roles (name, alignment, attack_level, defence_level) VALUES ($1, $2, $3, $4) RETURNING id",
+                        x.name,
+                        1 if x.is_citizen else (2 if x.is_independent else 3),
+                    )
 
         return
         raise RuntimeError(

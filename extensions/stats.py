@@ -8,16 +8,24 @@ if typing.TYPE_CHECKING:
     from utils import Context
     from utils.custom_bot import MafiaBot
 
+
 class Stats(commands.Cog):
     def __init__(self, bot: MafiaBot):
         self.bot = bot
 
     @commands.command("stats")
-    async def stats(self, ctx: Context, user: typing.Optional[discord.User] = None, only_this_server = False):
+    async def stats(
+        self,
+        ctx: Context,
+        user: typing.Optional[discord.User] = None,
+        only_this_server=False,
+    ):
         user = user or ctx.author
 
         if only_this_server and not ctx.guild:
-            return await ctx.reply("You cannot get server stats in dms", mention_author=False)
+            return await ctx.reply(
+                "You cannot get server stats in dms", mention_author=False
+            )
 
         query = """
         SELECT
@@ -43,17 +51,21 @@ class Stats(commands.Cog):
             kills = await conn.fetch(query, user.id)
 
         if only_this_server:
-            games = list(filter(lambda row: row['guild_id'] == ctx.guild.id, games))
-            _game_ids = tuple(x['id'] for x in games)
-            kills = list(filter(lambda row: row['game_id'] in _game_ids, kills))
+            games = list(filter(lambda row: row["guild_id"] == ctx.guild.id, games))
+            _game_ids = tuple(x["id"] for x in games)
+            kills = list(filter(lambda row: row["game_id"] in _game_ids, kills))
 
-        def condition(predicate: typing.Callable[[asyncpg.Record], bool], data: list) -> int:
+        def condition(
+            predicate: typing.Callable[[asyncpg.Record], bool], data: list
+        ) -> int:
             return len(tuple(filter(predicate, data)))
 
-        wins = condition(lambda row: row['win'], games)
-        suicides = condition(lambda row: row['suicide'], kills)
-        mafia = condition(lambda row: row['role'] == "Mafia", games)
+        wins = condition(lambda row: row["win"], games)
+        suicides = condition(lambda row: row["suicide"], kills)
+        mafia = condition(lambda row: row["role"] == "Mafia", games)
 
-        fmt = f"{'You have' if user == ctx.author else f'{user} has'} played {len(games)} games, " \
-              f"won {wins} games, killed {len(kills)} people, committed suicide {suicides} times, " \
-              f"been mafia {mafia} times, "
+        fmt = (
+            f"{'You have' if user == ctx.author else f'{user} has'} played {len(games)} games, "
+            f"won {wins} games, killed {len(kills)} people, committed suicide {suicides} times, "
+            f"been mafia {mafia} times, "
+        )
