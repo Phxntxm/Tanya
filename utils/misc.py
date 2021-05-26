@@ -77,7 +77,9 @@ def players_to_hex(
 
 def get_mafia_player(game: MafiaGame, arg: str) -> Player:
     if not game:
-        raise commands.BadArgument("No game playing for this guild, cannot grab players")
+        raise commands.BadArgument(
+            "No game playing for this guild, cannot grab players"
+        )
 
     result = None
     players = game.players
@@ -181,7 +183,9 @@ def private_channel_check(
     return check
 
 
-def mafia_kill_check(game: MafiaGame, mapping: typing.Dict[int, str]) -> typing.Callable:
+def mafia_kill_check(
+    game: MafiaGame, mapping: typing.Dict[int, str]
+) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
         if m.channel != game.mafia_chat:

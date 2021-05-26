@@ -13,7 +13,9 @@ from discord.ext import commands
 def get_syntax_error(e):
     if e.text is None:
         return "```py\n{0.__class__.__name__}: {0}\n```".format(e)
-    return "```py\n{0.text}{1:>{0.offset}}\n{2}: {0}```".format(e, "^", type(e).__name__)
+    return "```py\n{0.text}{1:>{0.offset}}\n{2}: {0}```".format(
+        e, "^", type(e).__name__
+    )
 
 
 class Owner(commands.Cog, command_attrs={"hidden": True}):
@@ -52,20 +54,28 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
         }
 
         if msg.channel.id in self.sessions:
-            await ctx.send("Already running a REPL session in this channel. Exit it with `quit`.")
+            await ctx.send(
+                "Already running a REPL session in this channel. Exit it with `quit`."
+            )
             return
 
         self.sessions.add(msg.channel.id)
         await ctx.send("Enter code to execute or evaluate. `exit()` or `quit` to exit.")
 
         def check(m):
-            return m.author.id == msg.author.id and m.channel.id == msg.channel.id and m.content.startswith("`")
+            return (
+                m.author.id == msg.author.id
+                and m.channel.id == msg.channel.id
+                and m.content.startswith("`")
+            )
 
         code = None
 
         while True:
             try:
-                response = await ctx.bot.wait_for("message", check=check, timeout=10.0 * 60.0)
+                response = await ctx.bot.wait_for(
+                    "message", check=check, timeout=10.0 * 60.0
+                )
             except asyncio.TimeoutError:
                 await ctx.send("Exiting REPL session.")
                 self.sessions.remove(msg.channel.id)
