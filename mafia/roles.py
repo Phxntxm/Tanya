@@ -160,7 +160,7 @@ class Sheriff(Citizen):
         "If they are mafia, they will die... however if they are a citizen, you die instead"
     )
     can_kill_mafia_at_night = True
-    attack_message = "{killed.member.name} ({killed}) has been shot by the sherrif!"
+    attack_message = "{killed.member.name} ({killed}) has been shot by the sheriff!"
     suicide_message = "{killed.member.name} ({killed}) regretted what they've done, and shot themselves"
 
     async def night_task(self, game: MafiaGame, player: Player):
