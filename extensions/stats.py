@@ -51,6 +51,9 @@ class Stats(commands.Cog):
             """
             kills = await conn.fetch(query, user.id)
 
+        if not games:
+            return await ctx.reply(f"No stats for {user}", mention_author=False)
+
         if only_this_server:
             games = list(filter(lambda row: row["guild_id"] == ctx.guild.id, games))
             _game_ids = tuple(x["id"] for x in games)
