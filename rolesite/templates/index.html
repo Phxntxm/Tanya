@@ -1,34 +1,7 @@
 <html>
 
 <head>
-    <style>
-        #roles,
-        #misc,
-        #config {
-            width: 75%;
-            margin-left: auto;
-            margin-right: auto;
-            margin-bottom: 50px;
-        }
-
-        #config-input {
-            width: 100%
-        }
-
-        table,
-        th,
-        td {
-            border: 1px solid black;
-        }
-
-        .role-input,
-        .misc-input {
-            width: 35px;
-            margin-right: 20px;
-            margin-left: 20px;
-        }
-    </style>
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
     <title>
         Mafia custom roles
     </title>
@@ -85,10 +58,6 @@
             var max_players = document.getElementById("max-players-input");
             var mafia = document.getElementById("mafia-input");
 
-            if (mafia > Math.floor(max_players / 2)) {
-                mafia.value = Math.floor(max_players / 2)
-            }
-
             hex += parseInt(mafia.value).toString(16).padStart(2, 0);
             hex += parseInt(max_players.value).toString(16).padStart(2, 0);
             hex += parseInt(min_players.value).toString(16).padStart(2, 0);
@@ -105,12 +74,31 @@
 
             }
             if (count > parseInt(max_players.value)) {
-                console.log(count);
-                console.log(max_players.value);
                 hex = "#INVALID; CUSTOM ROLES > MAX PLAYERS";
             }
             if (parseInt(min_players.value) > parseInt(max_players.value)) {
                 hex = "INVALID; MAX PLAYERS > MIN PLAYERS"
+            }
+            if (parseInt(mafia.value) > Math.floor(max_players / 2)) {
+                hex = "INVALID; MAFIA PLAYERS > MAX ALLOWED"
+            }
+            if (parseInt(mafia.value) < parseInt(mafia.min)) {
+                hex = "INVALID; MAFIA PLAYERS < MIN ALLOWED"
+            }
+            if (parseInt(mafia.value) > parseInt(mafia.max)) {
+                hex = "INVALID; MAFIA PLAYERS > MAX ALLOWED"
+            }
+            if (parseInt(min_players.value) < parseInt(min_players.min)) {
+                hex = "INVALID; MIN PLAYERS < MIN ALLOWED"
+            }
+            if (parseInt(min_players.value) > parseInt(min_players.max)) {
+                hex = "INVALID; MIN PLAYERS > MAX ALLOWED"
+            }
+            if (parseInt(max_players.value) < parseInt(max_players.min)) {
+                hex = "INVALID; MAX PLAYERS < MIN ALLOWED"
+            }
+            if (parseInt(max_players.value) > parseInt(max_players.max)) {
+                hex = "INVALID; MAX PLAYERS > MAX ALLOWED"
             }
             document.getElementById("config-input").value = hex;
         }

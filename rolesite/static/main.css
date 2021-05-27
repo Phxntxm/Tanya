@@ -1,0 +1,49 @@
+body {
+    background-color: #141526;
+}
+
+label {
+    color: white;
+}
+
+table {
+    background-color: #26273B;
+}
+
+input {
+    color: white;
+    background-color: #26273B;
+    border-style: solid;
+    border-color: rgba(145, 147, 168, 0.5);
+    border-width: 1px !important;
+    border-radius: 4px;
+    size: 30px;
+}
+
+input[type=number]:focus{
+    border-color: #1cbfff;
+    outline: #1cbfff;
+}
+input[type=number]:hover{
+    border-color: white;
+}
+
+#roles,
+#misc,
+#config {
+    width: 75%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 50px;
+}
+
+#config-input {
+    width: 100%
+}
+
+.role-input,
+.misc-input {
+    width: 50px;
+    margin-right: 20px;
+    margin-left: 20px;
+}
