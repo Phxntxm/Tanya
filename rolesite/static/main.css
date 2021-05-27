@@ -3,12 +3,12 @@ body {
 }
 
 label {
-    color: white;
+    color: floralwhite;
     font-size: 25px
 }
 
 h1, h2 {
-    color: white;
+    color: floralwhite;
     font-size: 50px;
     text-align: center;
 }
@@ -24,18 +24,18 @@ table {
 }
 
 input {
-    color: white;
+    color: floralwhite;
     background-color: #26273B;
     font-size: 15px;
     border-style: solid;
     border-color: rgba(145, 147, 168, 0.5);
     border-width: 1px !important;
     border-radius: 4px;
-    size: 70px;
+    width: 70px;
 }
 
 input[type=number]:hover{
-    border-color: white;
+    border-color: floralwhite;
 }
 input[type=number]:focus{
     border-color: #1cbfff;
@@ -47,13 +47,30 @@ td {
     width: 50px;
 }
 
-#roles,
-#misc,
-#config {
-    width: 75%;
+#roles{
+    width: 93%;
+    height: 85%;
+    margin-top: 10px;
     margin-left: auto;
     margin-right: auto;
-    margin-bottom: 50px;
+    margin-bottom: auto;
+}
+
+#misc{
+    width: 95%;
+    height: 85%;
+    margin-top: 20px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: auto;
+}
+
+#config {
+    width: 85%;
+    height: 85%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: auto;
 }
 
 #config-input {
@@ -64,4 +81,48 @@ td {
 .misc-input {
     margin-right: 20px;
     margin-left: 20px;
+}
+
+.data-misc {
+    box-sizing: border-box;
+    background-color: #2A2C2E;
+    border-radius: 20px;
+    width: 1400px;
+    height: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    margin: 10px;
+}
+
+.data-roles {
+    box-sizing: border-box;
+    background-color: #2A2C2E;
+    border-radius: 20px;
+    width: 1500px;
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    margin: 20px;
+}
+
+.data-conf {
+    box-sizing: border-box;
+    background-color: #2A2C2E;
+    border-radius: 20px;
+    width: 1000px;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px;
+    margin: 20px;
+}
+#data-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
 }

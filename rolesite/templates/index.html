@@ -8,48 +8,65 @@
 </head>
 
 
-<body>
+<main>
     <h1>Enter in your custom roles below!</h1>
     <h2>A configuration will be generated, that can be copied and provided to the bot</h1>
-
-        <table id="misc">
-            <tr>
-                <td>
-                    <input type="number" min=3 max=25 value=3 id="min-players-input" class="misc-input"
-                        oninput="changeConfig();" onclick="this.select();">
-                    <label class="role-label">Mininum Players</label>
-                </td>
-                <td>
-                    <input type="number" min=3 max=25 value=3 id="max-players-input" class="misc-input"
-                        oninput="changeConfig();" onclick="this.select();">
-                    <label class="role-label">Maximum Players</label>
-                </td>
-                <td>
-                    <input type="number" min=1 max=25 value=1 id="mafia-input" class="misc-input"
-                        oninput="changeConfig();" onclick="this.select();">
-                    <label class="role-label">Mafia</label>
-                </td>
-            </tr>
-        </table>
-        <table id="roles">
-            <tr>
-                {% for role in roles %}
-                <td>
-                    <input type="number" min=0 max=25 role-id="{{role[1]}}" value=0 id="role-input-{{loop.index}}"
-                        class="role-input" oninput="changeConfig();" onclick="this.select();">
-                    <label class="role-label">{{role[0]}}</label>
-                </td>
-                {% if loop.index is divisibleby(4) %}
-            </tr>
-            <tr>
-                {% endif %}
-                {% endfor %}
-            </tr>
-        </table>
-        <div id="config">
-            <label>Config ID:</label>
-            <input type="text" readonly=true onclick="this.select();" value="0" id="config-input">
-        </div>
+        <section id="data-misc">
+            <div id="data-list">
+                <div class="data-misc">
+                    <table id="misc">
+                        <tr>
+                            <td>
+                                <input type="number" min=3 max=25 value=3 id="min-players-input" class="misc-input"
+                                    oninput="changeConfig();" onclick="this.select();">
+                                <label class="role-label">Mininum Players</label>
+                            </td>
+                            <td>
+                                <input type="number" min=3 max=25 value=3 id="max-players-input" class="misc-input"
+                                    oninput="changeConfig();" onclick="this.select();">
+                                <label class="role-label">Maximum Players</label>
+                            </td>
+                            <td>
+                                <input type="number" min=1 max=25 value=1 id="mafia-input" class="misc-input"
+                                    oninput="changeConfig();" onclick="this.select();">
+                                <label class="role-label">Mafia</label>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <section id="data-roles">
+            <div id="data-list">
+                <div class="data-roles">
+                    <table id="roles">
+                        <tr>
+                            {% for role in roles %}
+                            <td>
+                                <input type="number" min=0 max=25 role-id="{{role[1]}}" value=0 id="role-input-{{loop.index}}"
+                                    class="role-input" oninput="changeConfig();" onclick="this.select();">
+                                <label class="role-label">{{role[0]}}</label>
+                            </td>
+                            {% if loop.index is divisibleby(4) %}
+                        </tr>
+                        <tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <section id="data-conf">
+            <div id="data-list">
+                <div class="data-conf">
+                    <div id="config">
+                        <label>Config ID:</label>
+                        <input type="text" readonly=true onclick="this.select();" value="0" id="config-input">
+                    </div>
+                </div>
+            </div>
+        </section>
         <script>
             document.body.onload = changeConfig();
 
@@ -107,6 +124,6 @@
                 document.getElementById("config-input").value = hex;
             }
         </script>
-</body>
+</main>
 
 </html>
