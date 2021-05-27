@@ -4,28 +4,47 @@ body {
 
 label {
     color: white;
+    font-size: 25px
+}
+
+h1, h2 {
+    color: white;
+    font-size: 50px;
+    text-align: center;
+}
+
+h2 {
+    font-size: 25px;
+    margin-bottom: 75px;   
 }
 
 table {
     background-color: #26273B;
+    border-radius: 8px;
 }
 
 input {
     color: white;
     background-color: #26273B;
+    font-size: 15px;
     border-style: solid;
     border-color: rgba(145, 147, 168, 0.5);
     border-width: 1px !important;
     border-radius: 4px;
-    size: 30px;
+    size: 70px;
 }
 
+input[type=number]:hover{
+    border-color: white;
+}
 input[type=number]:focus{
     border-color: #1cbfff;
     outline: #1cbfff;
 }
-input[type=number]:hover{
-    border-color: white;
+
+td {
+    height: 40px;
+    width: 50px;
 }
 
 #roles,
@@ -43,7 +62,6 @@ input[type=number]:hover{
 
 .role-input,
 .misc-input {
-    width: 50px;
     margin-right: 20px;
     margin-left: 20px;
 }
