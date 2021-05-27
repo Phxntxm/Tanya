@@ -10,7 +10,7 @@ def serve_site():
         ("Citizen", 51),
         ("Sheriff", 52),
         ("Jester", 53),
-        ("Executior", 54),
+        ("Executioner", 54),
         ("Survivor", 55),
         ("Doctor", 56),
         ("PI", 57),
