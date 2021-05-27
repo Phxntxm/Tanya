@@ -1,1 +1,1 @@
-web: gunicorn rolesite:rolesite:app
+web: gunicorn rolesite.rolesite:app
