@@ -67,8 +67,8 @@ class Stats(commands.Cog):
         roles = collections.Counter([x["role"] for x in games])
         top_role = roles.most_common(1)[0]
 
-        deaths = condition(lambda row: row['killed'] == user.id, kills)
-        kills = condition(lambda row: row['killer'] == user.id, kills)
+        deaths = condition(lambda row: row["killed"] == user.id, kills)
+        kills = condition(lambda row: row["killer"] == user.id, kills)
 
         apost = "'"  # stupid fstrings
         fmt = (
