@@ -545,7 +545,7 @@ async def initialize_db(bot: MafiaBot):
                         x.__name__,
                         1 if x.is_citizen else (2 if x.is_independent else 3),
                         x.attack_type and x.attack_type.value,
-                        x.defense_type and x.defense_type.value
+                        x.defense_type and x.defense_type.value,
                     )
 
         return
