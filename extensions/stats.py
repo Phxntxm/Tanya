@@ -85,7 +85,7 @@ class Stats(commands.Cog):
         )
         await ctx.reply(fmt, mention_author=False)
 
-    @commands.command("serverstats")
+    @commands.command("serverstats", aliases=["guildstats"])
     @commands.guild_only()
     async def guild_stats(self, ctx: Context):
         """
