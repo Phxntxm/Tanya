@@ -15,25 +15,15 @@ if typing.TYPE_CHECKING:
 __all__ = (
     "AttackType",
     "DefenseType",
+    "Alignment",
     "Role",
-    "Doctor",
-    "Sheriff",
-    "Jailor",
-    "PI",
-    "Lookout",
-    "Mafia",
-    "Janitor",
-    "Disguiser",
-    "Independent",
-    "Survivor",
-    "Jester",
-    "Executioner",
-    "Arsonist",
     "role_mapping",
+    "initialize_db",
 )
 
 
 class AttackType(Enum):
+    none = 0
     basic = 1
     powerful = 2
     unstoppable = 3
@@ -52,6 +42,7 @@ class AttackType(Enum):
 
 
 class DefenseType(Enum):
+    none = 0
     basic = 1
     powerful = 2
     unstoppable = 3
@@ -67,6 +58,12 @@ class DefenseType(Enum):
 
     def __le__(self, other: AttackType):
         return self.value <= other.value
+
+
+class Alignment(Enum):
+    citizen = 1
+    independent = 2
+    mafia = 3
 
 
 class Role(abc.ABC):
@@ -90,16 +87,27 @@ class Role(abc.ABC):
     attack_message: str = ""
     suicide_message: str = ""
 
+    alignment: typing.Optional[Alignment] = None
+
     is_godfather: bool = False
-    is_citizen: bool = False
-    is_mafia: bool = False
-    is_independent: bool = False
     cleaned: bool = False
 
     channel: typing.Optional[discord.TextChannel] = None
 
     description = ""
     short_description = ""
+
+    @property
+    def is_citizen(self) -> bool:
+        return self.alignment is Alignment.citizen
+
+    @property
+    def is_mafia(self) -> bool:
+        return self.alignment is Alignment.mafia
+
+    @property
+    def is_independent(self) -> bool:
+        return self.alignment is Alignment.independent
 
     async def night_task(self, game: MafiaGame, player: Player) -> None:
         return
@@ -534,21 +542,16 @@ role_mapping.update(**{c.__name__: c for c in __special_independents__})
 
 async def initialize_db(bot: MafiaBot):
     async with bot.db.acquire() as conn:
-        query = "SELECT id, name, alignment, attack_level, defence_level FROM roles"
+        query = "SELECT * FROM roles"
         data = await conn.fetch(query)
 
-    for x in data:
-        r = role_mapping[x["name"]]
-        r.id = x["id"]
-        if x["alignment"] == 1:
-            r.is_citizen = True
-        elif x["alignment"] == 2:
-            r.is_independent = True
-        else:
-            r.is_mafia = True
+    for row in data:
+        role = role_mapping[row["name"]]
 
-        r.attack_type = x["attack_level"] and AttackType(x["attack_level"])
-        r.defense_type = x["defence_level"] and DefenseType(x["defence_level"])
+        role.id = row["id"]
+        role.alignment = Alignment(row["alignment"])
+        role.attack_type = AttackType(row["attack_level"])
+        role.defense_type = DefenseType(row["defence_level"])
 
     if not all(x.id is not None for x in role_mapping.values()):
         raise RuntimeError(

@@ -17,16 +17,7 @@ class MafiaPages(menus.ListPageSource):
     def __init__(self, data: typing.List, ctx: Context):
         self.ctx = ctx
 
-        def sort_func(arg):
-            if arg[0].is_citizen:
-                return 0
-            elif arg[0].is_mafia:
-                return 1
-            elif arg[0].is_independent:
-                return 2
-
-        data.sort(key=sort_func)
-
+        data.sort(key=lambda x: x.id)
         super().__init__(data, per_page=5)
 
     async def format_page(self, menu: MafiaMenu, entries: typing.List):

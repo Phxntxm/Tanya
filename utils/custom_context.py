@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import traceback
 import types
@@ -12,9 +14,13 @@ from discord.ext import commands
 
 from utils import Cog
 
+if typing.TYPE_CHECKING:
+    from utils import MafiaBot
+
 
 class Context(commands.Context):
     error_channel = config.error_channel_id
+    bot: MafiaBot
 
     def create_task(self, *args, **kwargs):
         """A shortcut to creating a task with a callback of logging the error"""
@@ -72,7 +78,7 @@ Guild ID: {self.guild.id}
                 await self.error_channel.send(fmt)
 
     @asynccontextmanager
-    async def acquire(self) -> asyncpg.Connection:
+    async def acquire(self) -> typing.AsyncIterator[asyncpg.Connection]:
         conn = await self.bot.db.acquire()
         try:
             yield conn

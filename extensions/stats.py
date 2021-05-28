@@ -26,7 +26,10 @@ class Stats(commands.Cog):
         Fetches stats for yourself, or for a specific user.
         You can put 'yes' after the user to fetch stats for only this server
         """
-        user = user or ctx.author
+        if user is None:
+            _user = ctx.author
+        else:
+            _user = user
 
         if only_this_server and not ctx.guild:
             return await ctx.reply(
@@ -37,7 +40,7 @@ class Stats(commands.Cog):
         SELECT
             games.id, guild_id, day_count, p.win, p.die, r.name AS role, r.alignment
         FROM games
-        INNER JOIN players p ON 
+        INNER JOIN players p ON
             games.id = p.game_id AND p.user_id = $1
         INNER JOIN roles r ON
             r.id = p.role
@@ -45,7 +48,7 @@ class Stats(commands.Cog):
             user_id = $1
         """
         async with ctx.acquire() as conn:
-            games = await conn.fetch(query, user.id)
+            games = await conn.fetch(query, _user.id)
 
             query = """
             SELECT
@@ -54,10 +57,10 @@ class Stats(commands.Cog):
             WHERE
                 killer = $1 OR killed = $1
             """
-            kills = await conn.fetch(query, user.id)
+            kills = await conn.fetch(query, _user.id)
 
         if not games:
-            return await ctx.reply(f"No stats for {user}", mention_author=False)
+            return await ctx.reply(f"No stats for {_user}", mention_author=False)
 
         if only_this_server:
             games = list(filter(lambda row: row["guild_id"] == ctx.guild.id, games))
@@ -70,17 +73,17 @@ class Stats(commands.Cog):
         roles = collections.Counter([x["role"] for x in games])
         top_role = roles.most_common(1)[0]
 
-        deaths = condition(lambda row: row["killed"] == user.id, kills)
-        kills = condition(lambda row: row["killer"] == user.id, kills)
+        deaths = condition(lambda row: row["killed"] == _user.id, kills)
+        kills = condition(lambda row: row["killer"] == _user.id, kills)
 
         apost = "'"  # stupid fstrings
 
         fmt = (
-            f"{'You have' if user == ctx.author else f'{user} has'} played {len(games)} game{'s' if len(games) != 1 else ''}"
+            f"{'You have' if _user == ctx.author else f'{_user} has'} played {len(games)} game{'s' if len(games) != 1 else ''}"
             f"{' in this server' if only_this_server else ''}, won {wins} game{'s' if wins != 1 else ''}, "
             f"killed {kills-suicides} {'people' if kills-suicides != 1 else 'person'}, died {deaths} time{'s' if deaths != 1 else ''}, committed suicide "
             f"{suicides} time{'s' if suicides != 1 else ''}, and been mafia {mafia} time{'s' if mafia != 1 else ''}.\n\n"
-            f"{'Your' if user == ctx.author else f'{user.name}{apost}s'} most common role "
+            f"{'Your' if _user == ctx.author else f'{_user.name}{apost}s'} most common role "
             f"{'here ' if only_this_server else ''}is {top_role[0]}, with {top_role[1]} game{'s' if top_role[1] != 1 else ''}."
         )
         await ctx.reply(fmt, mention_author=False)

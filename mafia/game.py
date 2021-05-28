@@ -69,7 +69,7 @@ class MafiaGame:
 
         self.ctx: Context = ctx
         self.is_day: bool = True
-        self.id: typing.Optional[int] = None
+        self.id: int = -1
 
         # Different chats needed
         # self.category = discord.CategoryChannel = None
@@ -521,7 +521,8 @@ class MafiaGame:
 
         async with self.ctx.acquire() as conn:
             query = "INSERT INTO games (guild_id, config) VALUES ($1, $2) RETURNING id"
-            self.id = await conn.fetchval(query, self.ctx.guild.id, conf)
+            ret = await conn.fetchval(query, self.ctx.guild.id, conf)
+            self.id = typing.cast(int, ret)
 
             batched = [
                 (self.id, player.member.id, player.role.id) for player in self.players
