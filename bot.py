@@ -20,7 +20,7 @@ if __name__ == "__main__":
     for ext in glob("extensions/*.py"):
         bot.load_extension(ext.replace("/", ".")[:-3])
 
-    if getattr(config, "fuck_you_sarc"):
+    if hasattr(config, "fuck_you_sarc"):
         bot.load_extension("jishaku")
 
     bot.run(config.token)
