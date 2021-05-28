@@ -10,10 +10,9 @@ if typing.TYPE_CHECKING:
     from utils.custom_bot import MafiaBot
 
 
-def condition(
-        predicate: typing.Callable[[asyncpg.Record], bool], data: list
-) -> int:
+def condition(predicate: typing.Callable[[asyncpg.Record], bool], data: list) -> int:
     return len(tuple(filter(predicate, data)))
+
 
 class Stats(commands.Cog):
     @commands.command("stats")
@@ -137,12 +136,26 @@ class Stats(commands.Cog):
             kills = await conn.fetch(query, ctx.guild.id)
 
         game_count = len(games)
-        suicide_count = condition(lambda rec: rec['suicide'], kills)
-        kill_count = condition(lambda rec: not rec['suicide'], kills)
-        lynch_count = condition(lambda rec: rec['killer'] is None, kills)
-        mafia_wins = len(set(x['game_id'] for x in players if x['win'] and x['role_name'] == "Mafia"))
-        ind_wins = len(set(x['game_id'] for x in players if x['win'] and x['role_name'] not in ("Mafia", "Citizen")))
-        cit_wins = len(set(x['game_id'] for x in players if x['win'] and x['role_name'] == "Citizen"))
+        suicide_count = condition(lambda rec: rec["suicide"], kills)
+        kill_count = condition(lambda rec: not rec["suicide"], kills)
+        lynch_count = condition(lambda rec: rec["killer"] is None, kills)
+        mafia_wins = len(
+            set(x["game_id"] for x in players if x["win"] and x["role_name"] == "Mafia")
+        )
+        ind_wins = len(
+            set(
+                x["game_id"]
+                for x in players
+                if x["win"] and x["role_name"] not in ("Mafia", "Citizen")
+            )
+        )
+        cit_wins = len(
+            set(
+                x["game_id"]
+                for x in players
+                if x["win"] and x["role_name"] == "Citizen"
+            )
+        )
 
         fmt = (
             f"This server has seen {game_count} game{'s' if game_count != 1 else ''}, "
@@ -154,6 +167,7 @@ class Stats(commands.Cog):
             f"and {cit_wins} win{'s' if cit_wins != 1 else ''} civilian wins."
         )
         await ctx.reply(fmt, mention_author=False)
+
 
 def setup(bot: "MafiaBot"):
     bot.add_cog(Stats())
