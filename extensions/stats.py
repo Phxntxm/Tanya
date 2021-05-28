@@ -4,9 +4,9 @@ import typing
 import asyncpg
 import discord
 from discord.ext import commands
+from utils import Context
 
 if typing.TYPE_CHECKING:
-    from utils import Context
     from utils.custom_bot import MafiaBot
 
 
