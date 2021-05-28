@@ -64,7 +64,7 @@ class Stats(commands.Cog):
         wins = condition(lambda row: row["win"], games)
         suicides = condition(lambda row: row["suicide"], kills)
         mafia = condition(lambda row: row["role"] == "Mafia", games)
-        roles = collections.Counter(*(x["role"] for x in games))
+        roles = collections.Counter([x["role"] for x in games])
         top_role = roles.most_common(1)[0]
 
         apost = "'"  # stupid fstrings
