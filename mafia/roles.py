@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-import asyncio
 import random
 import typing
 from enum import Enum
@@ -95,6 +94,7 @@ class Role(abc.ABC):
     is_citizen: bool = False
     is_mafia: bool = False
     is_independent: bool = False
+    cleaned: bool = False
 
     channel: typing.Optional[discord.TextChannel] = None
 
@@ -117,7 +117,7 @@ class Role(abc.ABC):
         return f"Your role is {self}\n{self.description}."
 
     def __str__(self) -> str:
-        return self.__class__.__name__
+        return self.__class__.__name__ if not self.cleaned else "Cleaned"
 
 
 class Citizen(Role):
@@ -159,7 +159,7 @@ class Sheriff(Citizen):
         "If they are mafia, they will die... however if they are a citizen, you die instead"
     )
     can_kill_mafia_at_night = True
-    attack_message = "{killed.member.name} ({killed}) has been shot by the sherrif!"
+    attack_message = "{killed.member.name} ({killed}) has been shot by the sheriff!"
     suicide_message = "{killed.member.name} ({killed}) regretted what they've done, and shot themselves"
 
     async def night_task(self, game: MafiaGame, player: Player):
@@ -496,7 +496,7 @@ class Arsonist(Independent):
         if player == player:
             for player in doused:
                 player.kill(player)
-            await player.channel.send(f"\U0001f525 They'll all burn")
+            await player.channel.send("\U0001f525 They'll all burn")
         else:
             player.doused = True
             player.visit(player)

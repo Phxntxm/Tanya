@@ -24,7 +24,7 @@ class ErrorHandler(commands.Cog):
         elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send("This command must be ran in a guild")
         else:
-            await ctx.bot.log_error(error, ctx.bot, ctx)
+            await ctx.log_error(error)
 
 
 def setup(bot):

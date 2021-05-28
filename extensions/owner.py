@@ -69,7 +69,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
                 and m.content.startswith("`")
             )
 
-        code = None
+        code = ""
 
         while True:
             try:
@@ -100,7 +100,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
 
             if executor is exec:
                 try:
-                    code = compile(cleaned, "<repl session>", "exec")
+                    code: str = compile(cleaned, "<repl session>", "exec")
                 except SyntaxError as e:
                     await ctx.send(get_syntax_error(e))
                     continue
@@ -225,7 +225,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
     @commands.command()
     async def status(self, ctx, *, status: str):
         """Changes the bot's 'playing' status"""
-        await ctx.bot.change_presence(activity=discord.Game(name=status, type=0))
+        await ctx.bot.change_presence(activity=discord.Game(name=status))
         await ctx.send("Just changed my status to '{}'!".format(status))
 
     @commands.command()

@@ -4,6 +4,8 @@ from datetime import datetime
 import discord
 from discord.ext import commands
 
+from mafia import role_mapping
+
 
 class Miscellaneous(commands.Cog):
     @commands.command()
@@ -61,7 +63,7 @@ class Miscellaneous(commands.Cog):
 Python version: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}
 Discord version: {discord.__version__}
 Games playing: {len(ctx.bot.get_cog("Mafia").games)}
-Custom roles implemented: {len(ctx.bot.role_mapping)}
+Custom roles implemented: {len(role_mapping)}
 Guilds: {len(ctx.bot.guilds)}
 """
         embed = discord.Embed(

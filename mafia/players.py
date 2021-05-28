@@ -130,6 +130,7 @@ class Player:
 
     def clean(self, by: Player):
         self.cleaned_by = by
+        self.role.cleaned = True
         self.visit(by)
 
     def disguise(self, target: Player, by: Player):
@@ -158,7 +159,7 @@ class Player:
         message: str,
         only_others: bool = True,
         only_alive: bool = True,
-        choices: typing.List[str] | typing.List[Player] = None,
+        choices: typing.List[str] = None,
     ) -> Player:
         # Get available choices based on what options given
         if choices is None:
