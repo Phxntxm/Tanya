@@ -551,18 +551,6 @@ async def initialize_db(bot: MafiaBot):
         r.defense_type = x["defence_level"] and DefenseType(x["defence_level"])
 
     if not all(x.id is not None for x in role_mapping.values()):
-        async with bot.db.acquire() as conn:
-            for x in role_mapping.values():
-                if x.id is None:
-                    x.id = await conn.fetchval(
-                        "INSERT INTO roles (name, alignment, attack_level, defence_level) VALUES ($1, $2, $3, $4) RETURNING id",
-                        x.__name__,
-                        1 if x.is_citizen else (2 if x.is_independent else 3),
-                        x.attack_type and x.attack_type.value,
-                        x.defense_type and x.defense_type.value,
-                    )
-
-        return
         raise RuntimeError(
             f"Missing role information in the database for roles {', '.join(x.__name__ for x in role_mapping.values() if x.id is None)}"
         )
