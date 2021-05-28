@@ -10,14 +10,23 @@ if typing.TYPE_CHECKING:
     from utils.custom_bot import MafiaBot
 
 
+def condition(
+        predicate: typing.Callable[[asyncpg.Record], bool], data: list
+) -> int:
+    return len(tuple(filter(predicate, data)))
+
 class Stats(commands.Cog):
     @commands.command("stats")
     async def stats(
         self,
-        ctx: "Context",
+        ctx: Context,
         user: typing.Optional[discord.User] = None,
         only_this_server=False,
     ):
+        """
+        Fetches stats for yourself, or for a specific user.
+        You can put 'yes' after the user to fetch stats for only this server
+        """
         user = user or ctx.author
 
         if only_this_server and not ctx.guild:
@@ -56,11 +65,6 @@ class Stats(commands.Cog):
             _game_ids = tuple(x["id"] for x in games)
             kills = list(filter(lambda row: row["game_id"] in _game_ids, kills))
 
-        def condition(
-            predicate: typing.Callable[[asyncpg.Record], bool], data: list
-        ) -> int:
-            return len(tuple(filter(predicate, data)))
-
         wins = condition(lambda row: row["win"], games)
         suicides = condition(lambda row: row["suicide"], kills)
         mafia = condition(lambda row: row["role"] == "Mafia", games)
@@ -82,6 +86,74 @@ class Stats(commands.Cog):
         )
         await ctx.reply(fmt, mention_author=False)
 
+    @commands.command("serverstats")
+    @commands.guild_only()
+    async def guild_stats(self, ctx: Context):
+        """
+        Fetches stats for the current server. Cannot be used in dms.
+        """
+        query = """
+        SELECT
+            id, day_count
+        FROM
+            games
+        WHERE
+            guild_id = $1
+        """
+
+        async with ctx.acquire() as conn:
+            games = await conn.fetch(query, ctx.guild.id)
+
+            query = """
+            SELECT
+                game_id, user_id, win, die, players.role, r.name AS rolename
+            FROM
+                players
+            INNER JOIN games g
+                ON g.guild_id = $1
+            INNER JOIN roles r
+                ON r.id = players.role
+            """
+
+            players = await conn.fetch(query, ctx.guild.id)
+
+            query = """
+            SELECT
+                kills.game_id, killer, killed, night, suicide, r.name AS kr_role_name, re.name as ke_role_name
+            FROM
+                kills
+            INNER JOIN games g
+                ON g.guild_id = $1
+            INNER JOIN players pk
+                ON pk.user_id = killed AND pk.game_id = kills.game_id
+            INNER JOIN players pe
+                ON pe.user_id = killed AND pk.game_id = kills.game_id
+            INNER JOIN roles rk
+                ON rk.id = pk.role
+            INNER JOIN roles re
+                ON re.id = pe.role
+            """
+
+            kills = await conn.fetch(query, ctx.guild.id)
+
+        game_count = len(games)
+        suicide_count = condition(lambda rec: rec['suicide'], kills)
+        kill_count = condition(lambda rec: not rec['suicide'], kills)
+        lynch_count = condition(lambda rec: rec['killer'] is None, kills)
+        mafia_wins = len(set(x['game_id'] for x in players if x['win'] and x['role_name'] == "Mafia"))
+        ind_wins = len(set(x['game_id'] for x in players if x['win'] and x['role_name'] not in ("Mafia", "Citizen")))
+        cit_wins = len(set(x['game_id'] for x in players if x['win'] and x['role_name'] == "Citizen"))
+
+        fmt = (
+            f"This server has seen {game_count} game{'s' if game_count != 1 else ''}, "
+            f"{suicide_count} suicide{'s' if suicide_count != 1 else ''}, "
+            f"{kill_count} kill{'s' if kill_count != 1 else ''}, "
+            f"{lynch_count} lynch{'es' if lynch_count != 1 else ''}, "
+            f"{mafia_wins} win{'s' if mafia_wins != 1 else ''} by the mafia, "
+            f"{ind_wins} win{'s' if ind_wins != 1 else ''} from independents, "
+            f"and {cit_wins} win{'s' if cit_wins != 1 else ''} civilian wins."
+        )
+        await ctx.reply(fmt, mention_author=False)
 
 def setup(bot: "MafiaBot"):
     bot.add_cog(Stats())
