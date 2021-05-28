@@ -75,7 +75,7 @@ class Stats(commands.Cog):
         fmt = (
             f"{'You have' if user == ctx.author else f'{user} has'} played {len(games)} game{'s' if len(games) != 1 else ''}"
             f"{' in this server' if only_this_server else ''}, won {wins} game{'s' if wins != 1 else ''}, "
-            f"killed {kills-suicides} people, died {deaths} time{'s' if deaths != 1 else ''}, committed suicide "
+            f"killed {kills-suicides} {'people' if kills-suicides != 1 else 'person'}, died {deaths} time{'s' if deaths != 1 else ''}, committed suicide "
             f"{suicides} time{'s' if suicides != 1 else ''}, and been mafia {mafia} time{'s' if mafia != 1 else ''}.\n\n"
             f"{'Your' if user == ctx.author else f'{user.name}{apost}s'} most common role "
             f"{'here ' if only_this_server else ''}is {top_role[0]}, with {top_role[1]} game{'s' if top_role[1] != 1 else ''}."
