@@ -71,7 +71,7 @@ class DefenseType(Enum):
 
 class Role(abc.ABC):
     # The ID that will be used to identify roles for config
-    id: int = None
+    id: typing.Optional[int] = None
     # Needed to check win condition for mafia during day, before they kill
     can_kill_mafia_at_night: bool = False
     # This boolean determines if their win condition only applies
