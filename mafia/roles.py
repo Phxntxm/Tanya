@@ -547,8 +547,8 @@ async def initialize_db(bot: MafiaBot):
         else:
             r.is_mafia = True
 
-        r.attack_type = AttackType(x["attack_level"])
-        r.defense_type = DefenseType(x["defence_level"])
+        r.attack_type = x["attack_level"] and AttackType(x["attack_level"])
+        r.defense_type = x["defence_level"] and DefenseType(x["defence_level"])
 
     if not all(x.id is not None for x in role_mapping.values()):
         async with bot.db.acquire() as conn:
