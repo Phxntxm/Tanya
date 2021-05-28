@@ -16,7 +16,7 @@ class Stats(commands.Cog):
         self,
         ctx: "Context",
         user: typing.Optional[discord.User] = None,
-        only_this_server = False,
+        only_this_server=False,
     ):
         user = user or ctx.author
 
