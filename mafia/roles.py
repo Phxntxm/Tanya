@@ -121,6 +121,7 @@ class Role(abc.ABC):
 
 
 class Citizen(Role):
+    id = None
     is_citizen = True
     short_description = "Stay alive and lynch all mafia"
     description = "Your win condition is lynching all mafia, you do not have a special role during the night"
@@ -130,6 +131,7 @@ class Citizen(Role):
 
 
 class Doctor(Citizen):
+    id = None
     defense_type = DefenseType.powerful
     short_description = "Save one person each night"
     description = (
@@ -152,6 +154,7 @@ class Doctor(Citizen):
 
 
 class Sheriff(Citizen):
+    id = None
     attack_type = AttackType.basic
     short_description = "Try to shoot one bad person during the night"
     description = (
@@ -181,6 +184,7 @@ class Sheriff(Citizen):
 
 
 class Jailor(Citizen):
+    id = None
     is_jailor: bool = True
     jails: int = 3
     target: typing.Optional[Player] = None
@@ -246,6 +250,7 @@ class Jailor(Citizen):
 
 
 class PI(Citizen):
+    id = None
     short_description = "Investigate the alliances of members"
     description = (
         "Every night you can investigate "
@@ -281,6 +286,7 @@ class PI(Citizen):
 
 
 class Lookout(Citizen):
+    id = None
     watching: typing.Optional[Player] = None
     short_description = "Watch someone each night to see who visits them"
     description = (
@@ -314,6 +320,7 @@ class Lookout(Citizen):
 
 
 class Mafia(Role):
+    id = None
     is_mafia = True
     attack_type = AttackType.basic
     description = (
@@ -335,6 +342,7 @@ class Mafia(Role):
 
 
 class Janitor(Mafia):
+    id = None
     cleans: int = 3
     limit = 1
     description = (
@@ -359,6 +367,7 @@ class Janitor(Mafia):
 
 
 class Disguiser(Mafia):
+    id = None
     short_description = "Disguise a mafia member as a non-mafia member"
     description = (
         "Your job is to help disguise your mafia buddies, each night choose one "
@@ -385,10 +394,12 @@ class Disguiser(Mafia):
 
 
 class Independent(Role):
+    id = None
     is_independent = True
 
 
 class Survivor(Independent):
+    id = None
     vests: int = 4
     win_is_multi = True
     defense_type = DefenseType.basic
@@ -427,6 +438,7 @@ class Survivor(Independent):
 
 
 class Jester(Independent):
+    id = None
     limit = 1
     short_description = "Your goal is to be killed by the town"
     description = "Your win condition is getting lynched or killed by the innocent"
@@ -438,6 +450,7 @@ class Jester(Independent):
 
 
 class Executioner(Independent):
+    id = None
     limit = 1
     defense_type = DefenseType.basic
     short_description = "Your goal is to get your target lynched"
@@ -463,6 +476,7 @@ class Executioner(Independent):
 
 
 class Arsonist(Independent):
+    id = None
     attack_type = AttackType.unstoppable
     defense_type = DefenseType.basic
     short_description = "Burn them all"
