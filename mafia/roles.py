@@ -542,7 +542,7 @@ async def initialize_db(bot: MafiaBot):
                 if x.id is None:
                     x.id = await conn.fetchval(
                         "INSERT INTO roles (name, alignment, attack_level, defence_level) VALUES ($1, $2, $3, $4) RETURNING id",
-                        x.name,
+                        str(x),
                         1 if x.is_citizen else (2 if x.is_independent else 3),
                     )
 
