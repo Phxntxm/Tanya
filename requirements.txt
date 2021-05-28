@@ -1,3 +1,4 @@
+asyncpg
 discord.py
 git+https://github.com/Rapptz/discord-ext-menus
 fuzzywuzzy

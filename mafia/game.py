@@ -69,6 +69,7 @@ class MafiaGame:
 
         self.ctx: Context = ctx
         self.is_day: bool = True
+        self.id: typing.Optional[int] = None
 
         # Different chats needed
         # self.category = discord.CategoryChannel = None
@@ -455,7 +456,7 @@ class MafiaGame:
 
     # Pre game entry methods
 
-    async def _setup_config(self):
+    async def _setup_config(self) -> str:
         """All the setup needed for the game to play"""
         ctx = self.ctx
         # Get/create the alive role
@@ -484,6 +485,8 @@ class MafiaGame:
             self._members = await self._setup_players(min_players, max_players)
             # Set the config
             self._config = MafiaGameConfig(amount_of_mafia, special_roles, ctx)
+
+            conf = self._preconfigured_config
         else:
             # Go through normal setup. Amount of players, letting players join, amount of mafia, special roles
             min_players, max_players = await self._setup_amount_players()
@@ -503,14 +506,28 @@ class MafiaGame:
             # Now that the setup is done, create the configuration for the game
             self._config = MafiaGameConfig(amount_of_mafia, special_roles, ctx)
 
+            conf = h
+
         for member in self._members:
             await member.add_roles(self._alive_game_role)
 
-    async def _game_preparation(self):
+        return conf
+
+    async def _game_preparation(self, conf: str):
         # Sort out the players
         await self.pick_players()
         # Setup the category required
         await self._setup_category()
+
+        async with self.ctx.acquire() as conn:
+            query = "INSERT INTO games (guild_id, config) VALUES ($1, $2) RETURNING id"
+            self.id = await conn.fetchval(query, self.ctx.guild.id, conf)
+
+            batched = [
+                (self.id, player.member.id, player.role.id) for player in self.players
+            ]
+            query = "INSERT INTO players VALUES ($1, $2, $3)"
+            await conn.executemany(query, batched)
 
     # Day/Night cycles
 
@@ -568,7 +585,8 @@ class MafiaGame:
 
     async def _day_notify_of_night_phase(self):
         """Handles notification of what happened during the night"""
-        killed = {}
+        killed: typing.Dict[Player, str] = {}
+        batched_kills: typing.List[typing.Tuple[int, int, int, int, bool]] = []
 
         for player in self.players:
             killer = player.attacked_by
@@ -598,6 +616,16 @@ class MafiaGame:
                     )
                 player.cleanup_attrs()
                 continue
+
+            batched_kills.append(
+                (
+                    self.id,
+                    killer.member.id,
+                    player.member.id,
+                    self._day - 1,
+                    killer == player,
+                )
+            )
 
             # If they were cleaned, then notify the cleaner
             if cleaner:
@@ -629,6 +657,13 @@ class MafiaGame:
                 player.executionor_target.role = role_mapping["Jester"]()
 
         task = create_day_image(self, list(killed.keys()))
+
+        async with self.ctx.acquire() as conn:
+            query = "INSERT INTO kills VALUES ($1, $2, $3, $4, $5)"
+            await conn.executemany(query, batched_kills)
+
+            query = "UPDATE players SET die = true WHERE game_id = $1 AND user_id = $2"
+            await conn.executemany(query, [(self.id, x[2]) for x in batched_kills])
 
         for player, msg in killed.items():
             await self.chat.send(msg)
@@ -742,6 +777,10 @@ class MafiaGame:
             await self.dead_chat.set_permissions(
                 player.member, read_messages=True, send_messages=True
             )
+            async with self.ctx.acquire() as conn:
+                query = "INSERT INTO kills VALUES ($1, null, $2, $3, false)"
+                await conn.execute(query, self.id, player.member.id, self._day)
+
             return True
         else:
             await self.chat.send(
@@ -848,13 +887,23 @@ class MafiaGame:
             f"The game is over! Roles were:\n{roles_msg}\n\n{winner_msg}",
             allowed_mentions=AllowedMentions(users=False),
         )
+
+        async with self.ctx.acquire() as conn:
+            query = "UPDATE players SET win = true WHERE game_id = $1 AND user_id = $2"
+            await conn.executemany(
+                query, [(self.id, player.member.id) for player in winners]
+            )
+            await conn.execute(
+                "UPDATE games SET day_count = $1 WHERE id = $2", self._day, self.id
+            )
+
         await asyncio.sleep(60)
         await self.cleanup()
 
     async def play(self):
         """Handles the preparation and the playing of the game"""
-        await self._setup_config()
-        await self._game_preparation()
+        conf = await self._setup_config()
+        await self._game_preparation(conf)
         await self._start()
 
     # Cleanup
