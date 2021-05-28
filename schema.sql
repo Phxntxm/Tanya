@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
-    alignment TEXT NOT NULL DEFAULT 'citizen',
+    alignment INT NOT NULL,
     defence_level INT NOT NULL DEFAULT 0,
     attack_level INT NOT NULL DEFAULT 0,
     description TEXT,

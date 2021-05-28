@@ -11,15 +11,12 @@ if typing.TYPE_CHECKING:
 
 
 class Stats(commands.Cog):
-    def __init__(self, bot: MafiaBot):
-        self.bot = bot
-
     @commands.command("stats")
     async def stats(
         self,
-        ctx: Context,
+        ctx: "Context",
         user: typing.Optional[discord.User] = None,
-        only_this_server=False,
+        only_this_server = False,
     ):
         user = user or ctx.author
 
@@ -78,3 +75,7 @@ class Stats(commands.Cog):
             f"{'here ' if only_this_server else ''}is {top_role}"
         )
         await ctx.reply(fmt, mention_author=False)
+
+
+def setup(bot: "MafiaBot"):
+    bot.add_cog(Stats())
