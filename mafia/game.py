@@ -72,7 +72,7 @@ class MafiaGame:
         self.id: int = -1
 
         # Different chats needed
-        # self.category = discord.CategoryChannel = None
+        self.category = discord.CategoryChannel = None
         # self.chat: typing.Optional[discord.TextChannel] = None
         # self.info: typing.Optional[discord.TextChannel] = None
         # self.mafia_chat: typing.Optional[discord.TextChannel] = None
