@@ -306,7 +306,7 @@ class MafiaGame:
                 description=f"Press \N{WHITE HEAVY CHECK MARK} to join! Waiting till at least {min_players} join. "
                 f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
             )
-            embed.set_thumbnail(url=str(ctx.guild.icon_url))
+            embed.set_thumbnail(url=str(ctx.guild.icon.url))
             embed.set_footer(text=f"{len(game_players)}/{min_players} Needed to join")
             msg = await ctx.send(embed=embed)
             await msg.add_reaction("\N{WHITE HEAVY CHECK MARK}")

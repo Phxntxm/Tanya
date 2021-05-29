@@ -38,7 +38,7 @@ class RolesSource(menus.ListPageSource):
         embed.set_author(
             name="Dev Server",
             url="https://discord.gg/B6qJ4NKGvp",
-            icon_url=menu.ctx.bot.user.avatar_url,
+            icon_url=menu.ctx.bot.user.avatar.url,
         )
         for role in entries:
             embed.add_field(
@@ -144,7 +144,7 @@ class Mafia(Cog):
         embed.set_author(
             name="Dev Server",
             url="https://discord.gg/B6qJ4NKGvp",
-            icon_url=str(ctx.bot.user.avatar_url),
+            icon_url=str(ctx.bot.user.avatar.url),
         )
         await ctx.send(embed=embed)
 
@@ -197,7 +197,7 @@ Main chats during the game:
         embed.set_author(
             name="Dev Server",
             url="https://discord.gg/B6qJ4NKGvp",
-            icon_url=str(ctx.bot.user.avatar_url),
+            icon_url=str(ctx.bot.user.avatar.url),
         )
         await ctx.send(embed=embed)
 

@@ -23,9 +23,7 @@ class MafiaBot(commands.Bot):
     async def get_context(self, message, *, cls=Context):
         return await super().get_context(message, cls=cls)
 
-    async def start(
-        self, token: str, *, bot: bool = ..., reconnect: bool = ...
-    ) -> None:
+    async def start(self, token: str, *, reconnect: bool = ...) -> None:
         self.db = await asyncpg.create_pool(
             config.db_uri, min_size=1, max_inactive_connection_lifetime=10
         )
@@ -36,4 +34,4 @@ class MafiaBot(commands.Bot):
         from mafia import roles
 
         await roles.initialize_db(self)
-        return await super().start(token, bot=bot, reconnect=reconnect)
+        return await super().start(token, reconnect=reconnect)

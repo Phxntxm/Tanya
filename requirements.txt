@@ -1,5 +1,5 @@
 asyncpg
-discord.py
+git+https://github.com/Rapptz/discord.py@f321efd4de26b7bf7eeeadcccba039478cc6672c
 git+https://github.com/Rapptz/discord-ext-menus
 fuzzywuzzy
 python-Levenshtein

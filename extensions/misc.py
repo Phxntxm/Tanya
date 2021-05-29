@@ -24,7 +24,7 @@ class Miscellaneous(commands.Cog):
         embed.set_author(
             name="Dev Server",
             url="https://discord.gg/B6qJ4NKGvp",
-            icon_url=ctx.bot.user.avatar_url,
+            icon_url=ctx.bot.user.avatar.url,
         )
         await ctx.send(embed=embed)
 
@@ -75,7 +75,7 @@ Guilds: {len(ctx.bot.guilds)}
         embed.set_author(
             name="Dev Server",
             url="https://discord.gg/B6qJ4NKGvp",
-            icon_url=ctx.bot.user.avatar_url,
+            icon_url=ctx.bot.user.avatar.url,
         )
         await ctx.send(embed=embed)
 
