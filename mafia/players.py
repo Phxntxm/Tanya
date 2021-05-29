@@ -73,21 +73,6 @@ class Player:
         return self.role.description
 
     @property
-    def is_mafia(self) -> bool:
-        mafia_role = role_mapping.get("Mafia")
-        return mafia_role is not None and isinstance(self.role, mafia_role)
-
-    @property
-    def is_citizen(self) -> bool:
-        citizen_role = role_mapping.get("Citizen")
-        return citizen_role is not None and isinstance(self.role, citizen_role)
-
-    @property
-    def is_independent(self) -> bool:
-        independent_role = role_mapping.get("Independent")
-        return independent_role is not None and isinstance(self.role, independent_role)
-
-    @property
     def is_godfather(self) -> bool:
         return self.role.is_godfather
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from mafia.roles import Alignment
 
 import re
 import typing
@@ -199,7 +200,7 @@ def mafia_kill_check(
         except (ValueError, KeyError, commands.MemberNotFound):
             return False
         else:
-            if p.is_mafia:
+            if p.role.alignment is Alignment.mafia:
                 return False
             else:
                 return True

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import dataclasses
+from mafia.roles import Alignment
 import math
 import random
 import typing
@@ -90,12 +91,18 @@ class MafiaGame:
 
     @property
     def total_mafia(self) -> int:
-        return sum(1 for player in self.players if player.is_mafia and not player.dead)
+        return sum(
+            1
+            for player in self.players
+            if player.role.alignment is Alignment.mafia and not player.dead
+        )
 
     @property
     def total_citizens(self) -> int:
         return sum(
-            1 for player in self.players if player.is_citizen and not player.dead
+            1
+            for player in self.players
+            if player.role.alignment is Alignment.citizen and not player.dead
         )
 
     @property
@@ -203,7 +210,7 @@ class MafiaGame:
 
         # Now add player specific overwrites into them
         for p in self.players:
-            if p.is_mafia:
+            if p.role.alignment is Alignment.mafia:
                 mafia_overwrites[p.member] = can_read_overwrites
             chat_overwrites[p.member] = can_read_overwrites
             info_overwrites[p.member] = can_read_overwrites
@@ -606,7 +613,7 @@ class MafiaGame:
             if protector and killer.attack_type <= protector.defense_type:
                 await player.channel.send(protector.save_message)
                 # If the killer was mafia, we also want to notify them of the saving
-                if killer.is_mafia:
+                if killer.role.alignment is Alignment.mafia:
                     await self.mafia_chat.send(
                         f"{player.member.name} was saved last night from your attack!"
                     )
@@ -758,7 +765,7 @@ class MafiaGame:
             await player.channel.set_permissions(
                 player.member, read_messages=True, send_messages=False
             )
-            if player.is_mafia:
+            if player.role.alignment is Alignment.mafia:
                 await self.mafia_chat.set_permissions(
                     player.member, read_messages=True, send_messages=False
                 )
@@ -806,7 +813,7 @@ class MafiaGame:
         mapping = {
             count: player.member.name
             for count, player in enumerate(self.players)
-            if not player.is_mafia and not player.dead
+            if not player.role.alignment is Alignment.mafia and not player.dead
         }
         msg = "\n".join(f"{count}: {player}" for count, player in mapping.items())
 

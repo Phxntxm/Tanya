@@ -97,18 +97,6 @@ class Role(abc.ABC):
     description = ""
     short_description = ""
 
-    @property
-    def is_citizen(self) -> bool:
-        return self.alignment is Alignment.citizen
-
-    @property
-    def is_mafia(self) -> bool:
-        return self.alignment is Alignment.mafia
-
-    @property
-    def is_independent(self) -> bool:
-        return self.alignment is Alignment.independent
-
     async def night_task(self, game: MafiaGame, player: Player) -> None:
         return
 
@@ -156,8 +144,9 @@ class Sheriff(Citizen):
         target = await player.wait_for_player(game, msg)
 
         # Handle what happens if their choice is right/wrong
-        if target.is_citizen or (
-            target.disguised_as and target.disguised_as.is_citizen
+        if target.role.alignment is Alignment.citizen or (
+            target.disguised_as
+            and target.disguised_as.role.alignment is Alignment.citizen
         ):
             player.kill(player)
             target.kill(player)
@@ -239,8 +228,12 @@ class PI(Citizen):
                 break
 
         # Now compare the two people
-        if (player1.is_citizen and player2.is_citizen) or (
-            player1.is_mafia and player2.is_mafia
+        if (
+            player1.role.alignment is Alignment.citizen
+            and player2.role.alignment is Alignment.citizen
+        ) or (
+            player1.role.alignment is Alignment.mafia
+            and player2.role.alignment is Alignment.mafia
         ):
             await player.channel.send(
                 f"{player1.member.mention} and {player2.member.mention} have the same alignment"
@@ -280,8 +273,6 @@ class Lookout(Citizen):
 
 
 class Mafia(Role):
-    is_mafia = True
-
     def win_condition(self, game: MafiaGame, player: Player):
         if game.is_day:
             # If any citizen can kill during the night, then we cannot guarantee
@@ -314,9 +305,15 @@ class Janitor(Mafia):
 class Disguiser(Mafia):
     async def night_task(self, game: MafiaGame, player: Player):
         # Get mafia and non-mafia
-        mafia = [p.member.name for p in game.players if not p.dead and p.is_mafia]
+        mafia = [
+            p.member.name
+            for p in game.players
+            if not p.dead and p.role.alignment is Alignment.mafia
+        ]
         non_mafia = [
-            p.member.name for p in game.players if not p.dead and not p.is_mafia
+            p.member.name
+            for p in game.players
+            if not p.dead and p.role.alignment is not Alignment.mafia
         ]
         msg = "Choose **the number next to** the mafia member you want to disguise"
         player1 = await player.wait_for_player(game, msg, choices=mafia)
@@ -371,7 +368,9 @@ class Jester(Independent):
 
     def win_condition(self, game: MafiaGame, player: Player):
         return player.lynched or (
-            player.dead and player.attacked_by and not player.attacked_by.is_mafia
+            player.dead
+            and player.attacked_by
+            and player.attacked_by.role.alignment is not Alignment.mafia
         )
 
 
@@ -383,7 +382,9 @@ class Executioner(Independent):
         player.protected_by = player
 
     def startup_channel_message(self, game: MafiaGame, player: Player):
-        self.target = random.choice([p for p in game.players if p.is_citizen])
+        self.target = random.choice(
+            [p for p in game.players if p.role.alignment is Alignment.citizen]
+        )
         self.target.executionor_target = player
         self.description += f". Your target is {self.target.member.mention}"
         return super().startup_channel_message(game, player)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from mafia.roles import Alignment
 import typing
 
 
@@ -30,12 +31,7 @@ class MafiaPages(menus.ListPageSource):
         for count, (role, amt) in enumerate(entries):
             emoji = to_keycap(count)
             role_type = "Unknown"
-            if role.is_citizen:
-                role_type = "Citizen"
-            elif role.is_mafia:
-                role_type = "Mafia"
-            elif role.is_independent:
-                role_type = "Independent"
+            role_type = role.alignment.name.title()
             embed.description = (
                 f"{embed.description}{emoji} **{role.__name__}**({role_type}): {amt}\n"
             )
@@ -53,7 +49,7 @@ class MafiaMenu(menus.MenuPages):
         # Subtract an extra one, because one of them HAS to be Godfather
         return (
             self.amount_of_mafia
-            - sum([v for k, v in self.source.entries if k.is_mafia])
+            - sum([v for k, v in self.source.entries if k.alignment is Alignment.mafia])
             - 1
         )
 
@@ -63,7 +59,13 @@ class MafiaMenu(menus.MenuPages):
         return (
             self.amount_of_players
             - self.amount_of_mafia
-            - sum([v for k, v in self.source.entries if not k.is_mafia])
+            - sum(
+                [
+                    v
+                    for k, v in self.source.entries
+                    if k.alignment is not Alignment.mafia
+                ]
+            )
         )
 
     async def finalize(self, timed_out):
@@ -136,7 +138,7 @@ class MafiaMenu(menus.MenuPages):
         index = num + self.source.per_page * self.current_page
         role, current_num = self.source.entries[index]
         # Only allow up to how many members can remain
-        if role.is_mafia:
+        if role.alignment is Alignment.mafia:
             amt_allowed = self.allowed_mafia + current_num
         else:
             amt_allowed = self.allowed_non_mafia + current_num
