@@ -718,7 +718,7 @@ class MafiaGame:
     async def _day_defense_phase(self, player: Player):
         """Handles the defense of a player phase"""
         # Set the overwrites so only this person can talk
-        overwrites = self.chat.overwrites
+        overwrites = typing.cast(dict, self.chat.overwrites)
         overwrites[self._alive_game_role] = cannot_send_overwrites
         overwrites[player.member] = can_send_overwrites
         await self.chat.edit(overwrites=overwrites)

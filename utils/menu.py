@@ -41,6 +41,7 @@ class MafiaMenu(menus.MenuPages):
     amount_of_players = 0
     amount_of_mafia = 0
     ctx: Context
+    source: menus.ListPageSource
 
     @property
     def allowed_mafia(self):

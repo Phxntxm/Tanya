@@ -19,8 +19,16 @@ if typing.TYPE_CHECKING:
 
 
 class Context(commands.Context):
-    error_channel = config.error_channel_id
+    _error_channel_id = config.error_channel_id
+    _error_channel: typing.Optional[discord.TextChannel] = None
     bot: MafiaBot
+
+    @property
+    def error_channel(self) -> typing.Optional[discord.TextChannel]:
+        if self._error_channel is not None:
+            return self._error_channel
+        self._error_channel = self.bot.get_channel(self._error_channel_id)
+        return self._error_channel
 
     def create_task(self, *args, **kwargs):
         """A shortcut to creating a task with a callback of logging the error"""
@@ -67,15 +75,8 @@ Guild ID: {self.guild.id}
         # If the channel has been set, use it
         if isinstance(self.error_channel, discord.TextChannel):
             await self.error_channel.send(fmt)
-        # Otherwise if it hasn't been set yet, try to set it
-        elif isinstance(self.error_channel, int):
-            channel = typing.cast(
-                discord.TextChannel,
-                await self.bot.fetch_channel(self.error_channel),
-            )
-            if channel is not None:
-                self.error_channel = channel
-                await self.error_channel.send(fmt)
+        else:
+            raise error
 
     @asynccontextmanager
     async def acquire(self) -> typing.AsyncIterator[asyncpg.Connection]:
