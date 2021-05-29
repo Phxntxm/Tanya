@@ -41,11 +41,11 @@ class Player:
         return str(self.role)
 
     @property
-    def attack_type(self) -> typing.Optional[AttackType]:
+    def attack_type(self) -> AttackType:
         return self.role.attack_type
 
     @property
-    def defense_type(self) -> typing.Optional[DefenseType]:
+    def defense_type(self) -> DefenseType:
         return self.role.defense_type
 
     @property

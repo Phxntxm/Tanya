@@ -79,8 +79,8 @@ class Role(abc.ABC):
     # The amount that can be used per game
     limit: int = 0
     # The attack and defense this role can have
-    attack_type: typing.Optional[AttackType] = None
-    defense_type: typing.Optional[DefenseType] = None
+    attack_type: AttackType = AttackType.none
+    defense_type: DefenseType = DefenseType.none
 
     # Messages sent based on different statuses
     save_message: str = "You were protected by an attack!"
@@ -129,25 +129,11 @@ class Role(abc.ABC):
 
 
 class Citizen(Role):
-    id = None
-    is_citizen = True
-    short_description = "Stay alive and lynch all mafia"
-    description = "Your win condition is lynching all mafia, you do not have a special role during the night"
-
     def win_condition(self, game: MafiaGame, player: Player):
         return game.total_mafia == 0
 
 
 class Doctor(Citizen):
-    id = None
-    defense_type = DefenseType.powerful
-    short_description = "Save one person each night"
-    description = (
-        "During the night you can choose one person to save. "
-        "They cannot be killed by a basic attack during that night"
-    )
-    save_message = "You were healed by the doctor!"
-
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive that isn't ourselves
         msg = (
@@ -162,16 +148,7 @@ class Doctor(Citizen):
 
 
 class Sheriff(Citizen):
-    id = None
-    attack_type = AttackType.basic
-    short_description = "Try to shoot one bad person during the night"
-    description = (
-        "During the night you can choose one person to shoot. "
-        "If they are mafia, they will die... however if they are a citizen, you die instead"
-    )
     can_kill_mafia_at_night = True
-    attack_message = "{killed.member.name} ({killed}) has been shot by the sheriff!"
-    suicide_message = "{killed.member.name} ({killed}) regretted what they've done, and shot themselves"
 
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive that isn't ourselves
@@ -192,21 +169,9 @@ class Sheriff(Citizen):
 
 
 class Jailor(Citizen):
-    id = None
     is_jailor: bool = True
     jails: int = 3
     target: typing.Optional[Player] = None
-    attack_type = AttackType.unstoppable
-    defense_type = DefenseType.powerful
-    short_description = "Jail someone to talk to them during the night"
-    description = (
-        "Each day you can choose to jail one person, during that night they "
-        "will be placed in a jail channel, everything you say in this channel will be sent "
-        "to the jail, allowing you to converse with them without revealing your identity\n\n"
-        "**You only have 3 jails total, use them wisely**"
-    )
-    attack_message = "{killed.member.name} ({killed}) has been executed by the Jailor!"
-    save_message = "Someone tried to attack you last night, but you were jailed!"
 
     async def day_task(self, game: MafiaGame, player: Player):
         if self.jails <= 0:
@@ -258,13 +223,6 @@ class Jailor(Citizen):
 
 
 class PI(Citizen):
-    id = None
-    short_description = "Investigate the alliances of members"
-    description = (
-        "Every night you can investigate "
-        "2 people, and see if their alignment is the same"
-    )
-
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive
         choices = [p.member.name for p in game.players if not p.dead and p != self]
@@ -294,13 +252,7 @@ class PI(Citizen):
 
 
 class Lookout(Citizen):
-    id = None
     watching: typing.Optional[Player] = None
-    short_description = "Watch someone each night to see who visits them"
-    description = (
-        "Your job is to watch carefully, every night you can watch one person "
-        "and will see who has visited them"
-    )
 
     async def night_task(self, game: MafiaGame, player: Player):
         msg = "Provide **the number next to** the player you want to watch tonight, at the end of the night I will let you know who visited them"
@@ -328,14 +280,7 @@ class Lookout(Citizen):
 
 
 class Mafia(Role):
-    id = None
     is_mafia = True
-    attack_type = AttackType.basic
-    description = (
-        "Your win condition is to have majority of townsfolk be mafia. "
-        "During the night you and your mafia buddies must agree upon 1 person to kill that night"
-    )
-    attack_message = "{killed.member.name} ({killed}) has been killed by the mafia!"
 
     def win_condition(self, game: MafiaGame, player: Player):
         if game.is_day:
@@ -350,16 +295,8 @@ class Mafia(Role):
 
 
 class Janitor(Mafia):
-    id = None
     cleans: int = 3
     limit = 1
-    description = (
-        "Your job is to clean, clean, clean. "
-        "Choose a member to clean up after during the night... if they do for ANY reason "
-        "their dead body will be cleaned up, and the town will not be notified of the death. "
-        "You will also receive information about what role that player was"
-    )
-    short_description = "Clean up any mess left by other mafia members"
 
     async def night_task(self, game: MafiaGame, player: Player):
         if self.cleans <= 0:
@@ -375,13 +312,6 @@ class Janitor(Mafia):
 
 
 class Disguiser(Mafia):
-    id = None
-    short_description = "Disguise a mafia member as a non-mafia member"
-    description = (
-        "Your job is to help disguise your mafia buddies, each night choose one "
-        "mafia member and one non mafia member. The mafia member will be disguised as the non mafia member"
-    )
-
     async def night_task(self, game: MafiaGame, player: Player):
         # Get mafia and non-mafia
         mafia = [p.member.name for p in game.players if not p.dead and p.is_mafia]
@@ -402,21 +332,12 @@ class Disguiser(Mafia):
 
 
 class Independent(Role):
-    id = None
-    is_independent = True
+    pass
 
 
 class Survivor(Independent):
-    id = None
     vests: int = 4
     win_is_multi = True
-    defense_type = DefenseType.basic
-    short_description = "Survive!"
-    description = (
-        "You must survive, each night you have the choice to use a bulletproof "
-        "vest which will save you from a basic attack. You only have 4 vests"
-    )
-    save_message = "Your vest saved you!"
 
     def win_condition(self, game: MafiaGame, player: Player) -> bool:
         return not player.dead
@@ -446,10 +367,7 @@ class Survivor(Independent):
 
 
 class Jester(Independent):
-    id = None
     limit = 1
-    short_description = "Your goal is to be killed by the town"
-    description = "Your win condition is getting lynched or killed by the innocent"
 
     def win_condition(self, game: MafiaGame, player: Player):
         return player.lynched or (
@@ -458,16 +376,7 @@ class Jester(Independent):
 
 
 class Executioner(Independent):
-    id = None
     limit = 1
-    defense_type = DefenseType.basic
-    short_description = "Your goal is to get your target lynched"
-    description = (
-        "Your win condition is getting a certain player lynched. If they "
-        "die without getting lynched, you become a Jester. Your goal is to then get "
-        "lynched yourself"
-    )
-    save_message = "You were attacked, but your defense is too strong!"
 
     async def night_task(self, game: MafiaGame, player: Player) -> None:
         # We have permanent basic defense, according to ToS
@@ -484,19 +393,6 @@ class Executioner(Independent):
 
 
 class Arsonist(Independent):
-    id = None
-    attack_type = AttackType.unstoppable
-    defense_type = DefenseType.basic
-    short_description = "Burn them all"
-    description = (
-        "Your job is simple, douse everyone in fuel and ignite them. You "
-        "win if everyone has been ignited and you are the last person left"
-    )
-    attack_message = (
-        "{killed.member.name} ({killed}) has been set ablaze by the Arsonist!"
-    )
-    save_message = "You were attacked, but your defense is too strong!"
-
     async def night_task(self, game: MafiaGame, player: Player):
         # We have permanent basic defense, according to ToS
         player.protected_by = player
@@ -549,9 +445,14 @@ async def initialize_db(bot: MafiaBot):
         role = role_mapping[row["name"]]
 
         role.id = row["id"]
+        role.description = row["description"]
+        role.short_description = row["blurb"]
+        role.save_message = row["save_message"]
+        role.attack_message = row["attack_message"]
+        role.suicide_message = row["suicide_message"]
         role.alignment = Alignment(row["alignment"])
         role.attack_type = AttackType(row["attack_level"])
-        role.defense_type = DefenseType(row["defence_level"])
+        role.defense_type = DefenseType(row["defense_level"])
 
     if not all(x.id is not None for x in role_mapping.values()):
         raise RuntimeError(

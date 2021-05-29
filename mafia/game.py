@@ -603,12 +603,7 @@ class MafiaGame:
                 continue
 
             # If they were protected, then let them know
-            if (
-                protector
-                and killer.attack_type
-                and protector.defense_type
-                and killer.attack_type <= protector.defense_type
-            ):
+            if protector and killer.attack_type <= protector.defense_type:
                 await player.channel.send(protector.save_message)
                 # If the killer was mafia, we also want to notify them of the saving
                 if killer.is_mafia:
