@@ -94,7 +94,7 @@ def round_avatar(avy: io.BytesIO, rad=64) -> Image:
 async def serialize_player(p: Player, ia: bool) -> dict:
     if ia:
         b = io.BytesIO()
-        await p.member.avatar.url_as(format="png", size=128).save(b)
+        await p.member.avatar.replace(format="png", size=128).save(b)
 
     return {
         "ni": p.member.nick,
