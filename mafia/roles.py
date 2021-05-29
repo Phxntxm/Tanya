@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import random
 import typing
+from utils.buttons import Vote
 
 import discord
 
@@ -46,7 +47,7 @@ class Role(abc.ABC):
     is_godfather: bool = False
     cleaned: bool = False
 
-    channel: typing.Optional[discord.TextChannel] = None
+    channel: discord.TextChannel
 
     description = ""
     short_description = ""
@@ -297,24 +298,20 @@ class Survivor(Independent):
         if self.vests <= 0:
             return
 
-        msg = await player.channel.send(
-            "Click the reaction if you want to protect yourself tonight "
-            f"(You have {self.vests} vests remaining)"
+        view = Vote(
+            f"Do you want to protect yourself tonight? {self.vests} vests remaining",
+            # Just to ensure no race conditions happen,
+            # only allow changing up to 5 seconds before night ends
+            timeout=game._config.night_length - 5,
         )
-        await msg.add_reaction("\N{THUMBS UP SIGN}")
+        votes = await view.start(self.channel)
+        result = votes.get("yes", 0) > 0
 
-        def check(p):
-            return (
-                p.message_id == msg.id
-                and p.user_id == player.member.id
-                and str(p.emoji) == "\N{THUMBS UP SIGN}"
-            )
+        if result:
+            self.vests -= 1
+            player.protected_by = player
 
-        await game.ctx.bot.wait_for("raw_reaction_add", check=check)
-        self.vests -= 1
-        player.protected_by = player
-
-        await player.channel.send("\U0001f9ba You're protecting yourself tonight")
+            await player.channel.send("\U0001f9ba You're protecting yourself tonight")
 
 
 class Jester(Independent):

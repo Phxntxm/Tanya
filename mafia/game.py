@@ -24,6 +24,7 @@ from utils import (
     get_mafia_player,
     cleanup_game,
     Alignment,
+    Vote,
 )
 
 if typing.TYPE_CHECKING:
@@ -402,11 +403,7 @@ class MafiaGame:
         if admins:
             await ctx.send(
                 "There are admins in this game, which means I cannot hide the "
-                f"game channels from them. I will DM you the role you have {','.join(admins)}"
-                ". Please only check the corresponding channel and the chat channel. "
-                "Don't chat during the night, only respond to prompts in your channel. **Please "
-                "make sure your DMs are open on this server, the game WILL fail to start if I can't "
-                "DM you.**"
+                "game channels from them. Do not cheat, I'm watching you >:C"
             )
 
         return game_members
@@ -730,34 +727,20 @@ class MafiaGame:
 
     async def _day_vote_phase(self, player: Player):
         """Handles the voting for a player"""
-        votes = {}
 
-        def check(m):
-            if m.channel != self.chat:
-                return False
-            if not (voter := discord.utils.get(self.players, member=m.author)):
-                return False
-            if m.content.lower() not in ("guilty", "innocent"):
-                return False
-            # Override to allow them to change their decision
-            votes[voter] = m.content.lower()
-            self.ctx.create_task(m.add_reaction("\N{THUMBS UP SIGN}"))
-            return False
-
-        await self.chat.send(
-            "Make your votes now! Send either `Guilty` or `Innocent` to cast your vote"
+        view = Vote(
+            "Make your votes now! Click either guilty or innocent to cast your vote!",
+            timeout=45,
+            yes_label="Innocent",
+            no_label="Guilty",
         )
-        try:
-            await self.ctx.bot.wait_for("message", check=check, timeout=30)
-        except asyncio.TimeoutError:
-            pass
+        votes = await view.start(self.ctx)
+        inno = votes.get("Innocent", 0)
+        guilty = votes.get("Guilty", 0)
 
-        guilty_votes = list(votes.values()).count("guilty")
-        innocent_votes = list(votes.values()).count("innocent")
-
-        if guilty_votes > innocent_votes:
+        if guilty > inno:
             await self.chat.send(
-                f"{player.member.mention} has been lynched! Votes {guilty_votes} to {innocent_votes}"
+                f"{player.member.mention} has been lynched! Votes {guilty} to {inno}"
             )
             player.dead = True
             player.lynched = True
@@ -787,7 +770,7 @@ class MafiaGame:
             return True
         else:
             await self.chat.send(
-                f"{player.member.mention} has been spared! Votes {guilty_votes} to {innocent_votes}"
+                f"{player.member.mention} has been spared! Votes {guilty} to {inno}"
             )
             return False
 
