@@ -5,19 +5,20 @@ import typing
 
 
 import discord
-from discord.ext import menus, commands
+from discord.ext import menus
 
 from utils import min_max_check, to_keycap
 
 if typing.TYPE_CHECKING:
     from utils import Context
+    from mafia import Role
 
 
 class MafiaPages(menus.ListPageSource):
-    def __init__(self, data: typing.List, ctx: Context):
+    def __init__(self, data: typing.List[typing.Tuple[Role, int]], ctx: Context):
         self.ctx = ctx
 
-        data.sort(key=lambda x: x.id)
+        data.sort(key=lambda x: x[0].id)
         super().__init__(data, per_page=5)
 
     async def format_page(self, menu: MafiaMenu, entries: typing.List):
