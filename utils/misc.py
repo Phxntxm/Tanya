@@ -1,8 +1,8 @@
 from __future__ import annotations
-from mafia.roles import Alignment
 
 import re
 import typing
+from enum import Enum
 
 import discord
 from discord.ext import commands
@@ -10,6 +10,50 @@ from fuzzywuzzy import process
 
 if typing.TYPE_CHECKING:
     from mafia import MafiaGame, Player, Role
+
+
+class AttackType(Enum):
+    none = 0
+    basic = 1
+    powerful = 2
+    unstoppable = 3
+
+    def __gt__(self, other: DefenseType):
+        return self.value > other.value
+
+    def __lt__(self, other: DefenseType):
+        return self.value < other.value
+
+    def __ge__(self, other: DefenseType):
+        return self.value >= other.value
+
+    def __le__(self, other: DefenseType):
+        return self.value <= other.value
+
+
+class DefenseType(Enum):
+    none = 0
+    basic = 1
+    powerful = 2
+    unstoppable = 3
+
+    def __gt__(self, other: AttackType):
+        return self.value > other.value
+
+    def __lt__(self, other: AttackType):
+        return self.value < other.value
+
+    def __ge__(self, other: AttackType):
+        return self.value >= other.value
+
+    def __le__(self, other: AttackType):
+        return self.value <= other.value
+
+
+class Alignment(Enum):
+    citizen = 1
+    independent = 2
+    mafia = 3
 
 
 def hex_to_players(

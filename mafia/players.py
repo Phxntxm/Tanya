@@ -4,11 +4,12 @@ import typing
 
 import discord
 from discord.ext import commands
+from utils import AttackType, DefenseType, get_mafia_player, private_channel_check
+
 from mafia import role_mapping
-from utils import private_channel_check, get_mafia_player
 
 if typing.TYPE_CHECKING:
-    from mafia import MafiaGame, Role, AttackType, DefenseType
+    from mafia import MafiaGame, Role
 
 
 class Player:

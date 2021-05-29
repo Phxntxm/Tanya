@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from mafia.roles import Alignment
 import typing
 
 
 import discord
 from discord.ext import menus
 
-from utils import min_max_check, to_keycap
+from utils import min_max_check, to_keycap, Alignment
 
 if typing.TYPE_CHECKING:
     from utils import Context

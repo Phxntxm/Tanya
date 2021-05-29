@@ -3,9 +3,10 @@ from __future__ import annotations
 import abc
 import random
 import typing
-from enum import Enum
 
 import discord
+
+from utils import Alignment, AttackType, DefenseType
 
 
 if typing.TYPE_CHECKING:
@@ -13,57 +14,10 @@ if typing.TYPE_CHECKING:
     from utils.custom_bot import MafiaBot
 
 __all__ = (
-    "AttackType",
-    "DefenseType",
-    "Alignment",
     "Role",
     "role_mapping",
     "initialize_db",
 )
-
-
-class AttackType(Enum):
-    none = 0
-    basic = 1
-    powerful = 2
-    unstoppable = 3
-
-    def __gt__(self, other: DefenseType):
-        return self.value > other.value
-
-    def __lt__(self, other: DefenseType):
-        return self.value < other.value
-
-    def __ge__(self, other: DefenseType):
-        return self.value >= other.value
-
-    def __le__(self, other: DefenseType):
-        return self.value <= other.value
-
-
-class DefenseType(Enum):
-    none = 0
-    basic = 1
-    powerful = 2
-    unstoppable = 3
-
-    def __gt__(self, other: AttackType):
-        return self.value > other.value
-
-    def __lt__(self, other: AttackType):
-        return self.value < other.value
-
-    def __ge__(self, other: AttackType):
-        return self.value >= other.value
-
-    def __le__(self, other: AttackType):
-        return self.value <= other.value
-
-
-class Alignment(Enum):
-    citizen = 1
-    independent = 2
-    mafia = 3
 
 
 class Role(abc.ABC):

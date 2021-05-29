@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import collections
 import dataclasses
-from mafia.roles import Alignment
 import math
 import random
 import typing
@@ -24,6 +23,7 @@ from utils import (
     mafia_kill_check,
     get_mafia_player,
     cleanup_game,
+    Alignment,
 )
 
 if typing.TYPE_CHECKING:
@@ -813,7 +813,7 @@ class MafiaGame:
         mapping = {
             count: player.member.name
             for count, player in enumerate(self.players)
-            if not player.role.alignment is Alignment.mafia and not player.dead
+            if player.role.alignment is not Alignment.mafia and not player.dead
         }
         msg = "\n".join(f"{count}: {player}" for count, player in mapping.items())
 
