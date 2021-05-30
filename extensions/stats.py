@@ -74,7 +74,7 @@ class Stats(commands.Cog):
 
         for row in player:
             games.add(row["id"])
-            roles.update(row["name"])
+            roles.update([row["name"]])
 
             if row["win"]:
                 wins += 1
