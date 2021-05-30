@@ -141,7 +141,9 @@ class MafiaGame:
     def check_winner(self) -> bool:
         """Loops through all the winners and checks their win conditions"""
         for player in self.players:
-            if not player.win_is_multi and player.win_condition(self):
+            if (
+                not player.win_is_multi and player.win_condition(self)
+            ) or self.total_mafia < 1:
                 return True
 
         return False
@@ -581,8 +583,6 @@ class MafiaGame:
             # If vote went through don't allow more nominations
             if await self._day_vote_phase(nominated):
                 break
-            if self.check_winner():
-                return
 
         for task in tasks:
             if not task.done():
@@ -734,7 +734,7 @@ class MafiaGame:
             yes_label="Innocent",
             no_label="Guilty",
         )
-        votes = await view.start(self.ctx)
+        votes = await view.start(self.chat)
         inno = votes.get("Innocent", 0)
         guilty = votes.get("Guilty", 0)
 
