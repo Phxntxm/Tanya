@@ -40,8 +40,8 @@ class Stats(commands.Cog):
             players.win,
             players.die,
             killed.killer,
-            killed.suicide AS died_by_suicide,
-            killed.lynch AS died_by_lynch,
+            killed.suicide,
+            killed.lynch,
             kills.killed
         FROM
             players
