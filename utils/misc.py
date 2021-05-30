@@ -168,7 +168,7 @@ def min_max_check(ctx: commands.Context, min: int, max: int) -> typing.Callable:
 def nomination_check(game: MafiaGame, nominations: typing.Dict) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Ignore if not in channel we want
-        if m.channel != game.chat:
+        if m.channel.id != game.chat.id:
             return False
         # Ignore if not player of game (admins, bots)
         if m.author not in [p.member for p in game.players]:
@@ -206,7 +206,7 @@ def private_channel_check(
 ) -> typing.Callable[[discord.Message], bool]:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
-        if m.channel != player.channel:
+        if m.channel.id != player.channel.id:
             return False
         elif m.author != player.member:
             return False
@@ -233,7 +233,7 @@ def mafia_kill_check(
 ) -> typing.Callable:
     def check(m: discord.Message) -> bool:
         # Only care about messages from the author in their channel
-        if m.channel != game.mafia_chat:
+        if m.channel.id != game.mafia_chat.id:
             return False
         elif m.author != game.godfather.member:
             return False
