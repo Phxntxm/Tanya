@@ -333,12 +333,19 @@ class Executioner(Independent):
         player.protected_by = player
 
     def startup_channel_message(self, game: MafiaGame, player: Player):
-        self.target = random.choice(
-            [p for p in game.players if p.role.alignment is Alignment.citizen]
-        )
-        self.target.executionor_target = player
-        self.description += f". Your target is {self.target.member.mention}"
-        return super().startup_channel_message(game, player)
+        possibilities = [
+            p for p in game.players if p.role.alignment is Alignment.citizen
+        ]
+
+        if possibilities:
+            self.target = random.choice(possibilities)
+            self.target.executionor_target = player
+            self.description += f". Your target is {self.target.member.mention}"
+            return super().startup_channel_message(game, player)
+        else:
+            player.role = role_mapping["Jester"]()
+            self.description = "There are no citizens this game, you've become a Jester! Your goal is to get lynched"
+            return super().startup_channel_message(game, player)
 
     def win_condition(self, game: MafiaGame, player: Player):
         return self.target.lynched
