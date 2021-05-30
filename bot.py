@@ -15,6 +15,7 @@ intents = discord.Intents(
 
 bot = MafiaBot(intents)
 
+
 if __name__ == "__main__":
     multiprocessing.set_start_method("forkserver")
     for ext in glob("extensions/*.py"):
