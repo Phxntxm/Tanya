@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS players (
     user_id BIGINT NOT NULL,
     PRIMARY KEY (game_id, user_id),
     role INTEGER NOT NULL REFERENCES roles (id),
-    win BOOLEAN,
+    win BOOLEAN NOT NULL DEFAULT false,
     die BOOLEAN NOT NULL DEFAULT false
 );
 CREATE TABLE IF NOT EXISTS kills (
@@ -29,5 +29,6 @@ CREATE TABLE IF NOT EXISTS kills (
     killer BIGINT,
     killed BIGINT NOT NULL,
     night INT NOT NULL,
-    suicide BOOLEAN NOT NULL
+    suicide BOOLEAN NOT NULL,
+    lynch BOOLEAN NOT NULL
 );

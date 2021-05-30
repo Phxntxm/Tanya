@@ -94,71 +94,50 @@ class Stats(commands.Cog):
         """
         Fetches stats for the current server. Cannot be used in dms.
         """
-        query = """
-        SELECT
-            id, day_count
-        FROM
-            games
-        WHERE
-            guild_id = $1
-        """
 
         async with ctx.acquire() as conn:
-            games = await conn.fetch(query, ctx.guild.id)
-
             query = """
             SELECT
-                game_id, user_id, win, die, players.role, r.name AS rolename
+                games.id,
+                players.user_id,
+                roles.alignment,
+                players.win,
+                players.die,
+                kills.killer,
+                kills.suicide,
+                kills.lynch
             FROM
                 players
-            INNER JOIN games g
-                ON g.guild_id = $1
-            INNER JOIN roles r
-                ON r.id = players.role
+            LEFT JOIN games
+                ON games.id = players.game_id
+            LEFT JOIN roles
+                ON roles.id = players.role
+            LEFT JOIN kills
+                ON killed = players.user_id AND kills.game_id = games.id
+            WHERE games.guild_id = $1
             """
 
             players = await conn.fetch(query, ctx.guild.id)
 
-            query = """
-            SELECT
-                kills.game_id, killer, killed, night, suicide, rk.name AS kr_role_name, re.name as ke_role_name
-            FROM
-                kills
-            INNER JOIN games g
-                ON g.guild_id = $1
-            INNER JOIN players pk
-                ON pk.user_id = killed AND pk.game_id = kills.game_id
-            INNER JOIN players pe
-                ON pe.user_id = killed AND pk.game_id = kills.game_id
-            INNER JOIN roles rk
-                ON rk.id = pk.role
-            INNER JOIN roles re
-                ON re.id = pe.role
-            """
+        games = set()
+        suicide_count = kill_count = lynch_count = mafia_wins = ind_wins = cit_wins = 0
 
-            kills = await conn.fetch(query, ctx.guild.id)
+        for row in players:
+            games.add(row["id"])
+            if row["suicide"]:
+                suicide_count += 1
+            if row["killer"]:
+                suicide_count += 1
+            if row["lynch"]:
+                lynch_count += 1
+            if row["win"] and row["alignment"] == 3:
+                mafia_wins += 1
+            if row["win"] and row["alignment"] == 2:
+                ind_wins += 1
+            if row["win"] and row["alignment"] == 1:
+                cit_wins += 1
 
         game_count = len(games)
-        suicide_count = condition(lambda rec: rec["suicide"], kills)
-        kill_count = condition(lambda rec: not rec["suicide"], kills)
-        lynch_count = condition(lambda rec: rec["killer"] is None, kills)
-        mafia_wins = len(
-            set(x["game_id"] for x in players if x["win"] and x["role_name"] == "Mafia")
-        )
-        ind_wins = len(
-            set(
-                x["game_id"]
-                for x in players
-                if x["win"] and x["role_name"] not in ("Mafia", "Citizen")
-            )
-        )
-        cit_wins = len(
-            set(
-                x["game_id"]
-                for x in players
-                if x["win"] and x["role_name"] == "Citizen"
-            )
-        )
 
         fmt = (
             f"This server has seen {game_count} game{'s' if game_count != 1 else ''}, "
