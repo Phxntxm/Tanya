@@ -121,7 +121,7 @@ class Stats(commands.Cog):
 
             query = """
             SELECT
-                kills.game_id, killer, killed, night, suicide, r.name AS kr_role_name, re.name as ke_role_name
+                kills.game_id, killer, killed, night, suicide, rk.name AS kr_role_name, re.name as ke_role_name
             FROM
                 kills
             INNER JOIN games g
