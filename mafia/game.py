@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from buttons.join import Join
 import collections
 import dataclasses
 import math
@@ -11,6 +12,7 @@ import discord
 from discord.mentions import AllowedMentions
 
 from mafia import role_mapping, Role, Player
+from buttons import Vote, Config
 from utils import (
     create_night_image,
     create_day_image,
@@ -24,7 +26,6 @@ from utils import (
     get_mafia_player,
     cleanup_game,
     Alignment,
-    Vote,
 )
 
 if typing.TYPE_CHECKING:
@@ -55,8 +56,7 @@ bot_overwrites = discord.PermissionOverwrite(
 
 @dataclasses.dataclass
 class MafiaGameConfig:
-    starting_mafia: int
-    special_roles: typing.List[typing.Type[Role]]
+    roles: typing.List[typing.Type[Role]]
     ctx: Context
     night_length: int = 90
     day_length: int = 120
@@ -166,26 +166,13 @@ class MafiaGame:
         await godfather.channel.send("You are the godfather!")
 
     async def pick_players(self):
-        player_cls = Player
-        mafia_cls = role_mapping["Mafia"]
-        citizen_cls = role_mapping["Citizen"]
-
         # I'm paranoid
         for _ in range(5):
             self._rand.shuffle(self._members)
-        # Set special roles first
-        for role in self._config.special_roles:
-            # Get member that will have this role
+
+        for role in self._config.roles:
             member = self._members.pop()
-            self.players.append(player_cls(member, self.ctx, role()))
-        # Then get the remaining normal mafia needed
-        for _ in range(self._config.starting_mafia - self.total_mafia):
-            member = self._members.pop()
-            self.players.append(player_cls(member, self.ctx, mafia_cls()))
-        # The rest are citizens
-        while self._members:
-            member = self._members.pop()
-            self.players.append(player_cls(member, self.ctx, citizen_cls()))
+            self.players.append(Player(member, self.ctx, role()))
 
     # Channel setup methods
 
@@ -300,116 +287,6 @@ class MafiaGame:
 
         return min_players, max_players
 
-    async def _setup_players(
-        self, min_players: int, max_players: int
-    ) -> typing.List[discord.Member]:
-        wait_length_for_players_to_join = 60
-        ctx = self.ctx
-        game_players: typing.Set[int] = set()
-
-        async def wait_for_players():
-            nonlocal game_players
-            game_players = set()
-            # Now start waiting for the players to actually join
-            embed = discord.Embed(
-                title="Mafia game!",
-                description=f"Press \N{WHITE HEAVY CHECK MARK} to join! Waiting till at least {min_players} join. "
-                f"After that will wait for {wait_length_for_players_to_join} seconds for the rest of the players to join",
-            )
-            embed.set_thumbnail(url=str(ctx.guild.icon.url))
-            embed.set_footer(text=f"{len(game_players)}/{min_players} Needed to join")
-            msg = await ctx.send(embed=embed)
-            await msg.add_reaction("\N{WHITE HEAVY CHECK MARK}")
-
-            timer_not_started = True
-            # Start the event here so that the update can use it
-            join_event = asyncio.Event()
-
-            async def joining_over():
-                await asyncio.sleep(wait_length_for_players_to_join)
-                join_event.set()
-
-            async def update_embed():
-                nonlocal timer_not_started
-                while True:
-                    # We want to start timeout if we've reached min players, but haven't
-                    # already started it
-                    start_timeout = (
-                        len(game_players) >= min_players and timer_not_started
-                    )
-                    if start_timeout:
-                        timer_not_started = False
-                        embed.description = f"{embed.description}\n\nMin players reached! Waiting {wait_length_for_players_to_join} seconds or till max players ({max_players}) reached"
-                        ctx.create_task(joining_over())
-                    embed.set_footer(
-                        text=f"{len(game_players)}/{min_players} Needed to join"
-                    )
-                    await msg.edit(embed=embed)
-                    await asyncio.sleep(2)
-
-            def check(p) -> bool:
-                # First don't accept any reactions that aren't actually people joining/leaving
-                if p.message_id != msg.id:
-                    return False
-                if str(p.emoji) != "\N{WHITE HEAVY CHECK MARK}":
-                    return False
-                if p.user_id == ctx.bot.user.id:
-                    return False
-                if p.event_type == "REACTION_ADD":
-                    game_players.add(p.user_id)
-                    # If we've hit the max, finish
-                    if len(game_players) == max_players:
-                        return True
-                # Only allow people to leave if we haven't hit the min
-                if p.event_type == "REACTION_REMOVE":
-                    try:
-                        game_players.remove(p.user_id)
-                    except KeyError:
-                        pass
-
-                return False
-
-            done, pending = await asyncio.wait(
-                [
-                    ctx.create_task(ctx.bot.wait_for("raw_reaction_add", check=check)),
-                    ctx.create_task(
-                        ctx.bot.wait_for("raw_reaction_remove", check=check)
-                    ),
-                    ctx.create_task(update_embed()),
-                    ctx.create_task(join_event.wait()),
-                ],
-                return_when=asyncio.FIRST_COMPLETED,
-                timeout=300,
-            )
-
-            for task in pending:
-                task.cancel()
-
-            # If nothing was done, then the timeout happened
-            if not done:
-                raise asyncio.TimeoutError()
-
-            return len(game_players) >= min_players
-
-        for _ in range(5):
-            if await wait_for_players():
-                break
-
-        if len(game_players) < min_players:
-            await ctx.send("Failed to get players too many times")
-            raise Exception()
-
-        # Get the member objects
-        game_members = await ctx.guild.query_members(user_ids=list(game_players))
-        admins = [p.mention for p in game_members if p.guild_permissions.administrator]
-        if admins:
-            await ctx.send(
-                "There are admins in this game, which means I cannot hide the "
-                "game channels from them. Do not cheat, I'm watching you >:C"
-            )
-
-        return game_members
-
     async def _setup_amount_mafia(self, players: int) -> int:
         ctx = self.ctx
         # Get amount of Mafia
@@ -477,42 +354,35 @@ class MafiaGame:
         # Config is already set
         if self._preconfigured_config:
             # Convert hex to the stuff we care about
-            (
-                amount_of_mafia,
-                min_players,
-                max_players,
-                special_roles,
-            ) = hex_to_players(
-                self._preconfigured_config,
-                # A list of only the special roles
-                [v for k, v in role_mapping.items() if k not in ["Mafia", "Citizen"]],
+            roles = hex_to_players(
+                self._preconfigured_config, list(role_mapping.values())
             )
-            # The only setup we need to do is get the players who will player
-            self._members = await self._setup_players(min_players, max_players)
+            # The only setup we need to do is get the players who will play
+            self._members = await Join(len(roles)).start(ctx)
             # Set the config
-            self._config = MafiaGameConfig(amount_of_mafia, special_roles, ctx)
+            self._config = MafiaGameConfig(roles, ctx)
 
             conf = self._preconfigured_config
         else:
-            # Go through normal setup. Amount of players, letting players join, amount of mafia, special roles
-            min_players, max_players = await self._setup_amount_players()
-            self._members = await self._setup_players(min_players, max_players)
-            amount_of_mafia = await self._setup_amount_mafia(len(self._members))
-            special_roles = await self._setup_special_roles(
-                len(self._members), amount_of_mafia
-            )
-            # Convert the tuple of player, amount to just a list of all roles
-            special_roles = [role for (role, amt) in special_roles for _ in range(amt)]
-            # Get hex to allow them to use this setup in the future
-            h = players_to_hex(special_roles, amount_of_mafia, min_players, max_players)
-            await self.ctx.send(
-                "In the future you can provide this to the mafia start command "
-                f"to use the exact same configuration:\n{h}"
-            )
-            # Now that the setup is done, create the configuration for the game
-            self._config = MafiaGameConfig(amount_of_mafia, special_roles, ctx)
+            roles = await Config(list(role_mapping.values()), ctx.author).start(ctx)
 
-            conf = h
+            if roles is None:
+                raise Exception("Game setup cancelled")
+            else:
+                roles = [r.role for r in roles for _ in range(r.amount)]
+                # Go through normal setup. Amount of players, letting players join, amount of mafia, special roles
+                self._members = await Join(len(roles)).start(ctx)
+                # Convert the tuple of player, amount to just a list of all roles
+                # Get hex to allow them to use this setup in the future
+                h = players_to_hex(roles)
+                await self.ctx.send(
+                    "In the future you can provide this to the mafia start command "
+                    f"to use the exact same configuration:\n{h}"
+                )
+                # Now that the setup is done, create the configuration for the game
+                self._config = MafiaGameConfig(roles, ctx)
+
+                conf = h
 
         for member in self._members:
             await member.add_roles(self._alive_game_role)
@@ -730,6 +600,7 @@ class MafiaGame:
 
         view = Vote(
             "Make your votes now! Click either guilty or innocent to cast your vote!",
+            allowed=[p.member for p in self.players if not p.dead],
             timeout=45,
             yes_label="Innocent",
             no_label="Guilty",

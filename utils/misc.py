@@ -58,19 +58,12 @@ class Alignment(Enum):
 
 def hex_to_players(
     hex_repr: str, all_roles: typing.List[typing.Type[Role]]
-) -> typing.Tuple[int, int, int, typing.List[typing.Type[Role]]]:
+) -> typing.List[typing.Type[Role]]:
     """Takes in a hex number and converts it to a configuration
     based on the amount of special roles it specifies"""
 
     num = int(hex_repr, 16)
     roles_to_play = []
-    # The first 3 sets of 2 of the hex represent the min, max, and amount of mafia
-    min_players = num & 0xFF
-    num = num >> 0x8
-    max_players = num & 0xFF
-    num = num >> 0x8
-    amount_of_mafia = num & 0xFF
-    num = num >> 0x8
 
     while num != 0:
         # The rest of the hex is made up of any number of 2 parts of 2
@@ -89,22 +82,15 @@ def hex_to_players(
         for _ in range(amount):
             roles_to_play.append(role)
 
-    return amount_of_mafia, min_players, max_players, roles_to_play
+    return roles_to_play
 
 
-def players_to_hex(
-    roles: typing.List[typing.Type[Role]],
-    amount_of_mafia: int,
-    min_players: int = None,
-    max_players: int = None,
-) -> str:
+def players_to_hex(roles: typing.List[typing.Type[Role]]) -> str:
     """Takes in a list of players and produces a hex configuration. If min and max
     are not provided, then min and max will be the amount of roles"""
     mapping: typing.Dict[int, int] = {}
-    min_players = min_players if min_players else len(roles)
-    max_players = max_players if max_players else len(roles)
 
-    role_hex = f"{hex(amount_of_mafia)[2:].zfill(2)}{hex(max_players)[2:].zfill(2)}{hex(min_players)[2:].zfill(2)}"
+    role_hex = f""
 
     for role in roles:
         # Get amount currently set

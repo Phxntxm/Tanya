@@ -3,11 +3,11 @@ from __future__ import annotations
 import abc
 import random
 import typing
-from utils.buttons import Vote
 
 import discord
 
 from utils import Alignment, AttackType, DefenseType
+from buttons import Vote
 
 
 if typing.TYPE_CHECKING:
@@ -300,6 +300,7 @@ class Survivor(Independent):
 
         view = Vote(
             f"Do you want to protect yourself tonight? {self.vests} vests remaining",
+            allowed=[player.member],
             # Just to ensure no race conditions happen,
             # only allow changing up to 5 seconds before night ends
             timeout=game._config.night_length - 5,

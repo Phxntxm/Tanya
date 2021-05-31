@@ -5,10 +5,6 @@ import time
 import typing
 
 import discord
-from discord.components import SelectOption
-
-if typing.TYPE_CHECKING:
-    from utils.custom_context import Context
 
 
 class Vote(discord.ui.View):
@@ -16,12 +12,14 @@ class Vote(discord.ui.View):
         self,
         message: str,
         *,
+        allowed: typing.List[discord.User | discord.Member] = [],
         timeout: typing.Optional[float] = None,
         yes_label: str = "yes",
         no_label: str = "no",
     ):
         super().__init__(timeout=timeout)
         self._message = message
+        self.allowed = allowed
         self.votes: typing.Dict[int, str] = {}
 
         self._start_time: typing.Optional[float] = None
@@ -82,12 +80,22 @@ class Vote(discord.ui.View):
     # async def choose(self, select: discord.ui.Select, interaction: discord.Interaction):
     #     print(select, interaction)
 
+    async def handle_click(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        if self.allowed and interaction.user in self.allowed:
+            self.votes[interaction.user.id] = typing.cast(str, button.label)
+            await interaction.response.edit_message(content=self.message, view=self)
+        else:
+            await interaction.response.send_message(
+                "You are a spectator, you cannot vote",
+                ephemeral=True,
+            )
+
     @discord.ui.button(style=discord.ButtonStyle.green)
     async def yes(self, button: discord.ui.Button, interaction: discord.Interaction):
-        self.votes[interaction.user.id] = self.yes.label
-        await interaction.message.edit(content=self.message, view=self)
+        await self.handle_click(button, interaction)
 
     @discord.ui.button(style=discord.ButtonStyle.red)
     async def no(self, button: discord.ui.Button, interaction: discord.Interaction):
-        self.votes[interaction.user.id] = self.no.label
-        await interaction.message.edit(content=self.message, view=self)
+        await self.handle_click(button, interaction)
