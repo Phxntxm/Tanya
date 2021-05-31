@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import io
-import multiprocessing
 import typing
 from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import Pipe, Process
+from multiprocessing.connection import Connection
 
 import discord
 from PIL import Image, ImageDraw, ImageFont
@@ -21,48 +22,69 @@ death_marker = Image.open("./resources/death-marker.png", formats=("png",)).resi
     (96, 96)
 )
 
-processes: typing.Dict[int, "GameProcessor"] = {}
+processes: typing.Dict[
+    int,
+    typing.Tuple[Connection, Connection, Process],
+] = {}
 pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="ImageWaiter-")
 
 
-async def create_day_image(game: MafiaGame, deaths: typing.List[Player]) -> io.BytesIO:
-    if id(game) not in processes:
+def target(pipe: Connection) -> None:
+    avatars = {}  # cache the avatar images throughout the game
+    data: dict = (
+        pipe.recv()
+    )  # receives the initial game dump, with the avatars. Avatars won't be sent in later updates
+    game: dict = data["g"]
+    for player in game["p"]:
+        # turns the bytesio into image objects and applies the rounding masks
+        avatars[player["i"]] = round_avatar(player["a"])
+
+    while True:
+        d = pipe.recv()
+        if d["op"] == 0:  # nighttime images
+            resp = _sync_make_night_image(d["d"])
+        elif d["op"] == 1:  # daytime images
+            game.update(d["g"])
+            deaths = d["d"]
+            resp = _sync_make_day_image(game, deaths, avatars)
+        else:
+            raise RuntimeError("unknown opcode")
+
+        pipe.send(resp)
+
+
+async def get_process(game: MafiaGame) -> Connection:
+    gid = id(game)
+    proc = processes.get(gid)
+
+    if proc is None:
         # make a new renderer
-        parent, child = multiprocessing.Pipe(True)
-        processes[id(game)] = proc = GameProcessor(args=(child,))
-        proc.start()
-        proc.pipe = parent
+        parent, child = Pipe(True)
+        _proc = Process(target=target, args=(child,))
+        _proc.start()
+        processes[gid] = proc = (parent, child, _proc)
         parent.send({"g": await serialize_game(game, include_avatars=True)})
-        parent.send({"op": 1, "g": {}, "d": [x.member.id for x in deaths]})
 
-    else:
-        proc = processes[id(game)]
-        proc.pipe.send(
-            {
-                "op": 1,
-                "d": [x.member.id for x in deaths],
-                "g": await serialize_game(game, include_avatars=False),
-            }
-        )
+    return proc[0]
 
-    return await game.ctx.bot.loop.run_in_executor(pool, proc.pipe.recv)
+
+async def create_day_image(game: MafiaGame, deaths: typing.List[Player]) -> io.BytesIO:
+    parent = await get_process(game)
+    parent.send(
+        {
+            "op": 1,
+            "d": [x.member.id for x in deaths],
+            "g": await serialize_game(game, include_avatars=False),
+        }
+    )
+
+    return await game.ctx.bot.loop.run_in_executor(pool, parent.recv)
 
 
 async def create_night_image(game: MafiaGame) -> io.BytesIO:
-    if id(game) not in processes:
-        # make a new renderer
-        parent, child = multiprocessing.Pipe(True)
-        processes[id(game)] = proc = GameProcessor(args=(child,))
-        proc.start()
-        proc.pipe = parent
-        parent.send({"g": await serialize_game(game, include_avatars=True)})
-        parent.send({"op": 0, "d": game._day - 1})  # noqa
-
-    else:
-        proc = processes[id(game)]
-        proc.pipe.send({"op": 0, "d": game._day - 1})  # noqa
-
-    return await game.ctx.bot.loop.run_in_executor(pool, proc.pipe.recv)
+    parent = await get_process(game)
+    parent.send({"op": 0, "d": game._day - 1})
+    return await game.ctx.bot.loop.run_in_executor(pool, parent.recv)
 
 
 def add_corners(im, rad):
@@ -71,10 +93,10 @@ def add_corners(im, rad):
 
     global alpha
     if not alpha:  # cache the alpha layer
-        circle = Image.new("L", (rad * 2, rad * 2), 0)
+        circle = Image.new("L", (rad * 2, rad * 2))
         draw = ImageDraw.Draw(circle)
         draw.ellipse((0, 0, rad * 2, rad * 2), fill=255)
-        alpha = Image.new("L", im.size, 255)
+        alpha = Image.new("L", im.size, "white")
         alpha.paste(circle.crop((0, 0, rad, rad)), (0, 0))
         alpha.paste(circle.crop((0, rad, rad, rad * 2)), (0, im.size[0] - rad))
         alpha.paste(circle.crop((rad, 0, rad * 2, rad)), (128 - rad, 0))
@@ -95,6 +117,8 @@ async def serialize_player(p: Player, ia: bool) -> dict:
     if ia:
         b = io.BytesIO()
         await p.member.avatar.replace(format="png", size=128).save(b)
+    else:
+        b = None
 
     return {
         "ni": p.member.nick,
@@ -102,41 +126,17 @@ async def serialize_player(p: Player, ia: bool) -> dict:
         "i": p.member.id,
         "d": p.dead,
         "r": str(p.role),
-        "a": b if ia else None,  # noqa
+        "a": b if ia else None,
     }
 
 
-async def serialize_game(g: MafiaGame, include_avatars=False) -> dict:
+async def serialize_game(
+    g: MafiaGame, include_avatars=False
+) -> typing.Dict[str, typing.List[typing.Dict] | int]:
     return {
         "p": [await serialize_player(p, include_avatars) for p in g.players],
-        "d": g._day,  # noqa
+        "d": g._day,
     }
-
-
-class GameProcessor(multiprocessing.Process):
-    def run(self) -> None:
-        pipe = self._args[0]  # noqa
-        avatars = {}  # cache the avatar images throughout the game
-        data: dict = (
-            pipe.recv()
-        )  # receives the initial game dump, with the avatars. Avatars won't be sent in later updates
-        game: dict = data["g"]
-        for player in game["p"]:
-            # turns the bytesio into image objects and applies the rounding masks
-            avatars[player["i"]] = round_avatar(player["a"])
-
-        while True:
-            d = pipe.recv()
-            if d["op"] == 0:  # nighttime images
-                resp = _sync_make_night_image(d["d"])
-            elif d["op"] == 1:  # daytime images
-                game.update(d["g"])
-                deaths = d["d"]
-                resp = _sync_make_day_image(game, deaths, avatars)
-            else:
-                raise RuntimeError("unknown opcode")
-
-            pipe.send(resp)
 
 
 def _sync_make_night_image(night: int) -> io.BytesIO:
@@ -157,15 +157,18 @@ def _sync_make_night_image(night: int) -> io.BytesIO:
 
 
 def _sync_make_day_image(
-    game: dict, deaths: typing.List[int], avatars: dict
+    game: typing.Dict[str, typing.List[typing.Dict] | int],
+    deaths: typing.List[int],
+    avatars: dict,
 ) -> io.BytesIO:
     base: Image.Image = Image.open("./resources/background-day.png", formats=("png",))
     base = base.resize((1920, 1080)).convert("RGBA")
     raster = ImageDraw.Draw(base)
 
-    alive = list(filter(lambda player: not player["d"], game["p"]))
+    players = typing.cast(typing.List[typing.Dict], game["p"])
+    alive = list(filter(lambda player: not player["d"], players))
     dead = list(
-        filter(lambda player: player["d"] and player["i"] not in deaths, game["p"])
+        filter(lambda player: player["d"] and player["i"] not in deaths, players)
     )
 
     __w, _ = raster.textsize(f"Day {game['d']}", font=font_28days_title)  # noqa
@@ -174,7 +177,7 @@ def _sync_make_day_image(
     )  # noqa center the day #
     raster.text(
         (30, 260),
-        f"Alive Players",
+        "Alive Players",
         font=font_28days,
     )  # noqa put this above row 1
 
@@ -226,7 +229,10 @@ def _sync_make_day_image(
 
     if deaths:
         # these are the people who have died today
-        d = [discord.utils.find(lambda pl: pl["i"] == x, game["p"]) for x in deaths]
+        d = typing.cast(
+            typing.List[typing.Dict],
+            [discord.utils.find(lambda pl: pl["i"] == x, players) for x in deaths],
+        )
         for p in d:
             # fill certain slots with black text to contrast the background
             fill = "black" if col >= 1 and 3 > row > 0 else "white"
@@ -245,7 +251,7 @@ def _sync_make_day_image(
 
         raster.text(
             (30 + (col * col_width), 260),
-            f"Dead Players",
+            "Dead Players",
             font=font_28days,
             fill="black",
         )
@@ -266,7 +272,7 @@ def _sync_make_day_image(
 
 
 def cleanup_game(game: MafiaGame):
-    g_id = id(game)
-    if g_id in processes:
-        proc = processes.pop(g_id)
-        proc.terminate()
+    proc = processes.pop(id(game), None)
+
+    if proc:
+        proc[2].terminate()
