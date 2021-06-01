@@ -24,14 +24,14 @@ class MafiaBot(commands.Bot):
         return await super().get_context(message, cls=cls)
 
     async def start(self, token: str, *, reconnect: bool = ...) -> None:
-        # self.db = await asyncpg.create_pool(
-        #     config.db_uri, min_size=1, max_inactive_connection_lifetime=10
-        # )
+        self.db = await asyncpg.create_pool(
+            config.db_uri, min_size=1, max_inactive_connection_lifetime=10
+        )
 
-        # with open("schema.sql") as f:
-        #     await self.db.execute(f.read())
+        with open("schema.sql") as f:
+            await self.db.execute(f.read())
 
-        # from mafia import roles
+        from mafia import roles
 
-        # await roles.initialize_db(self)
+        await roles.initialize_db(self)
         return await super().start(token, reconnect=reconnect)
