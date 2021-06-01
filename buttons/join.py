@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from typing import List, Set, TYPE_CHECKING, cast
+from typing import List, Optional, Set, TYPE_CHECKING, cast
 from discord.abc import Messageable
 from discord.enums import ButtonStyle
 from discord.ui import Button, button, View
@@ -43,8 +43,8 @@ class Join(View):
         finally:
             await self.update_interaction(i)
 
-    async def start(self, channel: Messageable) -> List[Member]:
+    async def start(self, channel: Messageable) -> Optional[List[Member]]:
         await channel.send("Press Join to join! Leave to leave!", view=self)
-        await self.wait()
 
-        return list(self.players)
+        if not await self.wait():
+            return list(self.players)
