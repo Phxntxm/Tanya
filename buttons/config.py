@@ -107,12 +107,35 @@ class Config(View):
     def send_args(self) -> Dict[str, Any]:
         """Returns the args to be sent when sending/editing"""
         msg = f"Choose your roles. Min players required: {max(3, self.min_players)}"
-        if (
-            sum([r.amount for r in self._roles if r.role.alignment is Alignment.mafia])
-            == 0
-        ):
-            msg += "\nNO MAFIA ROLES CHOSEN, NEED AT LEAST ONE"
+        if errors := self.errors:
+            msg += "\n"
+            msg += "\n".join(errors)
+
+            self.confirm.disabled = True
         return {"content": msg, "view": self}
+
+    @property
+    def errors(self) -> List[str]:
+        """Returns the errors if any"""
+        errs: List[str] = []
+
+        maf_amount = sum(
+            [r.amount for r in self._roles if r.role.alignment is Alignment.mafia]
+        )
+        non_maf_amount = sum(
+            [r.amount for r in self._roles if r.role.alignment is not Alignment.mafia]
+        )
+
+        if maf_amount == 0:
+            errs.append("Need at least one mafia!")
+        if non_maf_amount / 2 <= maf_amount:
+            errs.append("Too many mafia! Half of the town must be non-mafia")
+        if non_maf_amount < 2:
+            errs.append("Need at least two non-mafia!")
+        if non_maf_amount + maf_amount < 3:
+            errs.append("Need at least three players total!")
+
+        return errs
 
     async def start(self, channel: discord.abc.Messageable) -> List[SetupRole] | None:
         await channel.send(**self.send_args)
@@ -150,17 +173,8 @@ class Config(View):
             if isinstance(b, RoleButton):
                 b.label = f"{b.role.role.__name__}: {b.role.amount}"
 
-            # Don't allow starting if there are fewer than 1 mafia
-            self.confirm.disabled = (
-                sum(
-                    [
-                        r.amount
-                        for r in self._roles
-                        if r.role.alignment is Alignment.mafia
-                    ]
-                )
-                == 0
-            )
+            # Don't allow starting if there are any errors
+            self.confirm.disabled = len(self.errors) > 0
 
     async def handle_click(self, b: RoleButton, inter: Interaction):
         role = b.role.role
