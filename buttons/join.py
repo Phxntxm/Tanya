@@ -37,7 +37,7 @@ class Join(View):
     async def leave(self, b: Button, i: Interaction):
         try:
             if isinstance(i.user, Member):
-                self.players.add(i.user)
+                self.players.remove(i.user)
         except KeyError:
             pass
         finally:
