@@ -125,9 +125,16 @@ class Config(View):
         non_maf_amount = sum(
             [r.amount for r in self._roles if r.role.alignment is not Alignment.mafia]
         )
+        reg_maf_amount = sum(
+            [r.amount for r in self._roles if r.role.__name__ == "Mafia"]
+        )
 
         if maf_amount == 0:
             errs.append("Need at least one mafia!")
+        if reg_maf_amount == 0:
+            errs.append(
+                "Need at least one normal mafia member! (This will be the godfather to begin with)"
+            )
         if non_maf_amount / 2 < maf_amount:
             errs.append("Too many mafia! At least half of the town must be non-mafia")
         if non_maf_amount < 2:
