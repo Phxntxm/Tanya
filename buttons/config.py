@@ -128,8 +128,8 @@ class Config(View):
 
         if maf_amount == 0:
             errs.append("Need at least one mafia!")
-        if non_maf_amount / 2 <= maf_amount:
-            errs.append("Too many mafia! Half of the town must be non-mafia")
+        if non_maf_amount / 2 < maf_amount:
+            errs.append("Too many mafia! At least half of the town must be non-mafia")
         if non_maf_amount < 2:
             errs.append("Need at least two non-mafia!")
         if non_maf_amount + maf_amount < 3:
@@ -173,8 +173,8 @@ class Config(View):
             if isinstance(b, RoleButton):
                 b.label = f"{b.role.role.__name__}: {b.role.amount}"
 
-            # Don't allow starting if there are any errors
-            self.confirm.disabled = len(self.errors) > 0
+        # Don't allow starting if there are any errors
+        self.confirm.disabled = len(self.errors) > 0
 
     async def handle_click(self, b: RoleButton, inter: Interaction):
         role = b.role.role
