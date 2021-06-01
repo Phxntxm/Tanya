@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+
+from discord.activity import Game
 from buttons.join import Join
 import collections
 import dataclasses
@@ -60,6 +62,10 @@ class MafiaGameConfig:
     ctx: Context
     night_length: int = 90
     day_length: int = 120
+
+
+class GameException(Exception):
+    pass
 
 
 class MafiaGame:
@@ -358,7 +364,11 @@ class MafiaGame:
                 self._preconfigured_config, list(role_mapping.values())
             )
             # The only setup we need to do is get the players who will play
-            self._members = await Join(len(roles)).start(ctx)
+            _members = await Join(len(roles)).start(ctx)
+            if _members is None:
+                raise GameException("Timed out waiting for players to join")
+            else:
+                self._members = _members
             # Set the config
             self._config = MafiaGameConfig(roles, ctx)
 
@@ -367,11 +377,15 @@ class MafiaGame:
             roles = await Config(list(role_mapping.values()), ctx.author).start(ctx)
 
             if roles is None:
-                raise Exception("Game setup cancelled")
+                raise GameException("Config setup was cancelled")
             else:
                 roles = [r.role for r in roles for _ in range(r.amount)]
                 # Go through normal setup. Amount of players, letting players join, amount of mafia, special roles
-                self._members = await Join(len(roles)).start(ctx)
+                _members = await Join(len(roles)).start(ctx)
+                if _members is None:
+                    raise GameException("Timed out waiting for members to join")
+                else:
+                    self._members = _members
                 # Convert the tuple of player, amount to just a list of all roles
                 # Get hex to allow them to use this setup in the future
                 h = players_to_hex(roles)
@@ -759,9 +773,13 @@ class MafiaGame:
 
     async def play(self):
         """Handles the preparation and the playing of the game"""
-        conf = await self._setup_config()
-        await self._game_preparation(conf)
-        await self._start()
+        try:
+            conf = await self._setup_config()
+            await self._game_preparation(conf)
+        except GameException as e:
+            return await self.ctx.send(str(e))
+        else:
+            await self._start()
 
     # Cleanup
 
