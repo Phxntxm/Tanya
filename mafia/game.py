@@ -337,7 +337,7 @@ class MafiaGame:
 
     # Pre game entry methods
 
-    async def _setup_config(self):
+    async def _setup_config(self) -> str:
         """All the setup needed for the game to play"""
         ctx = self.ctx
 
@@ -347,6 +347,7 @@ class MafiaGame:
             roles = hex_to_players(
                 self._preconfigured_config, list(role_mapping.values())
             )
+            conf = self._preconfigured_config
         else:
             roles = await Config(list(role_mapping.values()), ctx.author).start(
                 self.chat
@@ -355,6 +356,8 @@ class MafiaGame:
                 raise GameException("Config setup was cancelled")
             else:
                 roles = [r.role for r in roles for _ in range(r.amount)]
+
+            conf = players_to_hex(roles)
         # Pass in the mapping dict that will be used to setup each member's personal interaction
         _members = await Join(len(roles), self.inter_mapping).start(self.chat)
         if _members is None:
@@ -366,6 +369,8 @@ class MafiaGame:
 
         for member in self._members:
             await member.add_roles(self._alive_game_role)
+
+        return conf
 
     async def _game_preparation(self):
         # Setup the category required
