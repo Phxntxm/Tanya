@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from typing import List, Optional, Set, TYPE_CHECKING, cast
+from typing import Dict, List, Optional, Set, TYPE_CHECKING, cast
 from discord.abc import Messageable
 from discord.enums import ButtonStyle
 from discord.ui import Button, button, View
@@ -12,9 +12,10 @@ if TYPE_CHECKING:
 
 
 class Join(View):
-    def __init__(self, amount: int, *args, **kwargs):
+    def __init__(self, amount: int, mapping: dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.inter_mapping: Dict[int, Interaction] = mapping
         self.amount_to_join = amount
         self.players: Set[Member] = set()
 
@@ -26,6 +27,8 @@ class Join(View):
         await i.response.edit_message(
             content=f"{len(self.players)}/{self.amount_to_join} have joined", view=self
         )
+
+        self.inter_mapping[i.user.id] = i
 
     @button(label="Join", style=ButtonStyle.green)
     async def join(self, b: Button, i: Interaction):

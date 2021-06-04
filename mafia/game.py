@@ -78,6 +78,7 @@ class MafiaGame:
         self.ctx: Context = ctx
         self.is_day: bool = True
         self.id: int = -1
+        self.inter_mapping: typing.Dict[int, discord.Interaction] = {}
 
         # Different chats needed
         self.category = discord.CategoryChannel = None
@@ -178,9 +179,21 @@ class MafiaGame:
 
         for role in self._config.roles:
             member = self._members.pop()
-            self.players.append(Player(member, self.ctx, role()))
+            p = Player(member, self.ctx, role())
+            p.set_interaction(self.inter_mapping[p.member.id])
+            self.players.append(p)
 
     # Channel setup methods
+
+    async def _setup_chat_channel(self, category: discord.CategoryChannel):
+        chat_overwrites = {
+            self.ctx.guild.default_role: spectating_overwrites,
+            self.ctx.guild.me: bot_overwrites,
+            self._alive_game_role: can_send_overwrites,
+        }
+        self.chat: discord.TextChannel = await category.create_text_channel(
+            "chat", overwrites=chat_overwrites
+        )
 
     async def _setup_category_channels(self, category: discord.CategoryChannel):
         # Setup all the overwrites needed
@@ -188,11 +201,6 @@ class MafiaGame:
             self.ctx.guild.default_role: spectating_overwrites,
             self.ctx.guild.me: bot_overwrites,
             self._alive_game_role: cannot_send_overwrites,
-        }
-        chat_overwrites = {
-            self.ctx.guild.default_role: spectating_overwrites,
-            self.ctx.guild.me: bot_overwrites,
-            self._alive_game_role: can_send_overwrites,
         }
         dead_overwrites = {
             self.ctx.guild.default_role: everyone_overwrites,
@@ -208,14 +216,11 @@ class MafiaGame:
         for p in self.players:
             if p.role.alignment is Alignment.mafia:
                 mafia_overwrites[p.member] = can_read_overwrites
-            chat_overwrites[p.member] = can_read_overwrites
             info_overwrites[p.member] = can_read_overwrites
+            await self.chat.set_permissions(p.member, overwrite=can_read_overwrites)
 
         self.info: discord.TextChannel = await category.create_text_channel(
             "info", overwrites=info_overwrites
-        )
-        self.chat: discord.TextChannel = await category.create_text_channel(
-            "chat", overwrites=chat_overwrites
         )
         self.dead_chat: discord.TextChannel = await category.create_text_channel(
             "dead", overwrites=dead_overwrites
@@ -223,19 +228,6 @@ class MafiaGame:
         self.mafia_chat: discord.TextChannel = await category.create_text_channel(
             "mafia", overwrites=mafia_overwrites
         )
-
-    async def _setup_category(self):
-        # Create category the channels will be in first
-        self.category = category = await self.ctx.guild.create_category_channel(
-            "MAFIA GAME"
-        )
-        # Make sure the default channels are setup properly
-        await self._setup_category_channels(category)
-
-        # Do this in the background to allow for playing while waiting
-        self.ctx.create_task(self._setup_channels(category))
-
-        return category
 
     async def _setup_channels(self, category: discord.CategoryChannel):
         """Receives a category with the default channels already setup, then sets up the
@@ -345,17 +337,9 @@ class MafiaGame:
 
     # Pre game entry methods
 
-    async def _setup_config(self) -> str:
+    async def _setup_config(self):
         """All the setup needed for the game to play"""
         ctx = self.ctx
-        # Get/create the alive role
-        role = discord.utils.get(ctx.guild.roles, name=self._alive_game_role_name)
-        if role is None:
-            self._alive_game_role = await ctx.guild.create_role(
-                name=self._alive_game_role_name, hoist=True
-            )
-        else:
-            self._alive_game_role = role
 
         # Config is already set
         if self._preconfigured_config:
@@ -363,51 +347,44 @@ class MafiaGame:
             roles = hex_to_players(
                 self._preconfigured_config, list(role_mapping.values())
             )
-            # The only setup we need to do is get the players who will play
-            _members = await Join(len(roles)).start(ctx)
-            if _members is None:
-                raise GameException("Timed out waiting for players to join")
-            else:
-                self._members = _members
-            # Set the config
-            self._config = MafiaGameConfig(roles, ctx)
-
-            conf = self._preconfigured_config
         else:
-            roles = await Config(list(role_mapping.values()), ctx.author).start(ctx)
-
+            roles = await Config(list(role_mapping.values()), ctx.author).start(
+                self.chat
+            )
             if roles is None:
                 raise GameException("Config setup was cancelled")
             else:
                 roles = [r.role for r in roles for _ in range(r.amount)]
-                # Go through normal setup. Amount of players, letting players join, amount of mafia, special roles
-                _members = await Join(len(roles)).start(ctx)
-                if _members is None:
-                    raise GameException("Timed out waiting for members to join")
-                else:
-                    self._members = _members
-                # Convert the tuple of player, amount to just a list of all roles
-                # Get hex to allow them to use this setup in the future
-                h = players_to_hex(roles)
-                await self.ctx.send(
-                    "In the future you can provide this to the mafia start command "
-                    f"to use the exact same configuration:\n{h}"
-                )
-                # Now that the setup is done, create the configuration for the game
-                self._config = MafiaGameConfig(roles, ctx)
-
-                conf = h
+        # Pass in the mapping dict that will be used to setup each member's personal interaction
+        _members = await Join(len(roles), self.inter_mapping).start(self.chat)
+        if _members is None:
+            raise GameException("Timed out waiting for players to join")
+        else:
+            self._members = _members
+        # Set the config
+        self._config = MafiaGameConfig(roles, ctx)
 
         for member in self._members:
             await member.add_roles(self._alive_game_role)
 
-        return conf
-
-    async def _game_preparation(self, conf: str):
+    async def _game_preparation(self):
+        # Setup the category required
+        self.category = await self.ctx.guild.create_category_channel("MAFIA GAME")
+        # Get/create the alive role
+        role = discord.utils.get(self.ctx.guild.roles, name=self._alive_game_role_name)
+        if role is None:
+            self._alive_game_role = await self.ctx.guild.create_role(
+                name=self._alive_game_role_name, hoist=True
+            )
+        else:
+            self._alive_game_role = role
+        await self._setup_chat_channel(self.category)
+        # Set config
+        conf = await self._setup_config()
         # Sort out the players
         await self.pick_players()
-        # Setup the category required
-        await self._setup_category()
+        # Now setup the rest of the channels
+        await self._setup_category_channels(self.category)
 
         async with self.ctx.acquire() as conn:
             query = "INSERT INTO games (guild_id, config) VALUES ($1, $2) RETURNING id"
@@ -728,12 +705,13 @@ class MafiaGame:
 
     async def _start(self):
         """Play the game"""
-        await self.chat.send(
-            f"{self._alive_game_role.mention} game has started! (Your private channels will be created shortly)"
-        )
+        await self.chat.send(f"{self._alive_game_role.mention} game has started!")
         fmt = "\n".join(f"{player.role}" for player in self.players)
         msg = await self.info.send(f"Roles this game are:\n{fmt}")
         await msg.pin()
+
+        for p in self.players:
+            await p.send_message(content=p.role.startup_channel_message(self, p))
 
         while True:
             if await self._cycle():
@@ -774,10 +752,10 @@ class MafiaGame:
     async def play(self):
         """Handles the preparation and the playing of the game"""
         try:
-            conf = await self._setup_config()
-            await self._game_preparation(conf)
+            await self._game_preparation()
         except GameException as e:
-            return await self.ctx.send(str(e))
+            await self.ctx.send(str(e))
+            await self.cleanup()
         else:
             await self._start()
 

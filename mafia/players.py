@@ -27,6 +27,8 @@ class Player:
     night_role_blocked: bool = False
     jailed: bool = False
 
+    interaction: typing.Optional[discord.Interaction]
+
     def __init__(
         self,
         discord_member: discord.Member | discord.User,
@@ -89,6 +91,13 @@ class Player:
     @property
     def win_is_multi(self) -> bool:
         return self.role.win_is_multi
+
+    async def send_message(self, **kwargs):
+        if self.interaction is not None:
+            await self.interaction.followup.send(ephemeral=True, **kwargs)
+
+    def set_interaction(self, interaction: discord.Interaction):
+        self.interaction = interaction
 
     def win_condition(self, game: MafiaGame) -> bool:
         return self.role.win_condition(game, self)
