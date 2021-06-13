@@ -1,14 +1,11 @@
 import sys
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 import discord
+from custom_models import Context
 from discord.ext import commands
 
 from mafia import role_mapping
-
-if TYPE_CHECKING:
-    from custom_models import Context
 
 
 class Miscellaneous(commands.Cog):

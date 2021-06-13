@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Type
@@ -9,9 +7,6 @@ from custom_models import Context
 from discord.ext import commands, menus
 
 from mafia import MafiaGame, Player, Role, role_mapping
-
-if TYPE_CHECKING:
-    from custom_models import Context
 
 
 def stop_check():

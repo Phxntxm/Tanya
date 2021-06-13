@@ -1,11 +1,10 @@
 import collections
-import typing
+from typing import Optional
 
 import discord
 from discord.ext import commands
 
-if typing.TYPE_CHECKING:
-    from custom_models import MafiaBot, Context
+from custom_models import MafiaBot, Context
 
 
 class Stats(commands.Cog):
@@ -13,7 +12,7 @@ class Stats(commands.Cog):
     async def stats(
         self,
         ctx: Context,
-        user: typing.Optional[discord.User] = None,
+        user: Optional[discord.User] = None,
         only_this_server=False,
     ):
         """

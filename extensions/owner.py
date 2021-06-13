@@ -8,9 +8,10 @@ from contextlib import redirect_stdout
 
 import discord
 from discord.ext import commands
+from custom_models import Context
 
 
-def get_syntax_error(e):
+def get_syntax_error(e: SyntaxError):
     if e.text is None:
         return "```py\n{0.__class__.__name__}: {0}\n```".format(e)
     return "```py\n{0.text}{1:>{0.offset}}\n{2}: {0}```".format(
@@ -24,11 +25,11 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
     _last_result = None
     sessions = set()
 
-    async def cog_check(self, ctx):
+    async def cog_check(self, ctx: Context):
         return await ctx.bot.is_owner(ctx.author)
 
     @staticmethod
-    def cleanup_code(content):
+    def cleanup_code(content: str):
         """Automatically removes code blocks from the code."""
         # remove ```py\n```
         if content.startswith("```") and content.endswith("```"):
@@ -38,7 +39,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
         return content.strip("` \n")
 
     @commands.command()
-    async def repl(self, ctx):
+    async def repl(self, ctx: Context):
         msg = ctx.message
 
         variables = {
@@ -138,7 +139,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
                 await ctx.send("Unexpected error: `{}`".format(e))
 
     @commands.command()
-    async def sendtochannel(self, ctx, cid: int, *, message):
+    async def sendtochannel(self, ctx: Context, cid: int, *, message: str):
         """Sends a message to a provided channel, by ID"""
         channel = ctx.bot.get_channel(cid)
         await channel.send(message)
@@ -148,7 +149,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
             pass
 
     @commands.command()
-    async def debug(self, ctx, *, body: str):
+    async def debug(self, ctx: Context, *, body: str):
         env = {
             "bot": ctx.bot,
             "ctx": ctx,
@@ -195,7 +196,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
                 await ctx.send(f"```py\n{value}{ret}\n```"[:2000])
 
     @commands.command()
-    async def bash(self, ctx, *, cmd: str):
+    async def bash(self, ctx: Context, *, cmd: str):
         """Runs a bash command"""
         proc = await asyncio.create_subprocess_shell(
             cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
@@ -209,27 +210,26 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
             await ctx.send("Process finished, no output")
 
     @commands.command()
-    async def shutdown(self, ctx):
+    async def shutdown(self, ctx: Context):
         """Shuts the bot down"""
         fmt = "Shutting down, I will miss you {0.author.name}"
         await ctx.send(fmt.format(ctx.message))
-        await ctx.bot.logout()
         await ctx.bot.close()
 
     @commands.command()
-    async def name(self, ctx, new_nick: str):
+    async def name(self, ctx: Context, new_nick: str):
         """Changes the bot's name"""
         await ctx.bot.user.edit(username=new_nick)
         await ctx.send("Changed username to " + new_nick)
 
     @commands.command()
-    async def status(self, ctx, *, status: str):
+    async def status(self, ctx: Context, *, status: str):
         """Changes the bot's 'playing' status"""
         await ctx.bot.change_presence(activity=discord.Game(name=status))
         await ctx.send("Just changed my status to '{}'!".format(status))
 
     @commands.command()
-    async def load(self, ctx, *modules: str):
+    async def load(self, ctx: Context, *modules: str):
         """Loads a module"""
 
         for ext in modules:
@@ -242,7 +242,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
         await ctx.send(f"I have just loaded the module(s): {', '.join(modules)}")
 
     @commands.command()
-    async def unload(self, ctx, *modules: str):
+    async def unload(self, ctx: Context, *modules: str):
         """Unloads a module"""
 
         for ext in modules:
@@ -255,7 +255,7 @@ class Owner(commands.Cog, command_attrs={"hidden": True}):
         await ctx.send(f"I have just unloaded the module(s): {', '.join(modules)}")
 
     @commands.command()
-    async def reload(self, ctx, *modules: str):
+    async def reload(self, ctx: Context, *modules: str):
         """Reloads a module"""
 
         for ext in modules:

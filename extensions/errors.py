@@ -1,10 +1,5 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
+from custom_models import Context
 from discord.ext import commands
-
-if TYPE_CHECKING:
-    from custom_models import Context
 
 
 class ErrorHandler(commands.Cog):
