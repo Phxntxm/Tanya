@@ -1,15 +1,19 @@
 import sys
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
 
 from mafia import role_mapping
 
+if TYPE_CHECKING:
+    from custom_models import Context
+
 
 class Miscellaneous(commands.Cog):
     @commands.command()
-    async def help(self, ctx):
+    async def help(self, ctx: Context):
         """Provides useful information for using this bot"""
         embed = discord.Embed(
             title="Information",
@@ -29,7 +33,7 @@ class Miscellaneous(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(aliases=["invite"])
-    async def addbot(self, ctx):
+    async def addbot(self, ctx: Context):
         """Provides a link that you can use to add me to a server"""
         perms = discord.Permissions.none()
         perms.send_messages = True
@@ -42,22 +46,22 @@ class Miscellaneous(commands.Cog):
         app_info = await ctx.bot.application_info()
         await ctx.send(
             "Use this URL to add me to a server that you'd like!\n<{}>".format(
-                discord.utils.oauth_url(app_info.id, perms)
+                discord.utils.oauth_url(str(app_info.id), perms)
             )
         )
 
     @commands.command(aliases=["guild"])
-    async def server(self, ctx):
+    async def server(self, ctx: Context):
         """Provides an invite link to the official server"""
         await ctx.send("https://discord.gg/B6qJ4NKGvp")
 
     @commands.command()
-    async def prefix(self, ctx):
+    async def prefix(self, ctx: Context):
         """Sends the bot prefix"""
         await ctx.send("My prefix is >>")
 
     @commands.command(aliases=["botinfo"])
-    async def info(self, ctx):
+    async def info(self, ctx: Context):
         """Sends some information about this bot"""
         description = f"""
 Python version: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}

@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 
-from typing import Dict, List, Optional, Set, TYPE_CHECKING, cast
+from typing import Dict, List, Optional, Set, cast
 from discord.abc import Messageable
 from discord.enums import ButtonStyle
 from discord.ui import Button, button, View
 from discord import Interaction, Member
-
-if TYPE_CHECKING:
-    pass
 
 
 class Join(View):

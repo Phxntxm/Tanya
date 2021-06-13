@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import asyncio
-import typing
 from datetime import datetime
+from typing import TYPE_CHECKING, List, Type
 
 import discord
+from custom_models import Context
 from discord.ext import commands, menus
 
-from utils import Cog, Context
-from mafia import role_mapping, MafiaGame, Player, Role
+from mafia import MafiaGame, Player, Role, role_mapping
+
+if TYPE_CHECKING:
+    from custom_models import Context
 
 
 def stop_check():
@@ -24,12 +29,10 @@ def stop_check():
 
 
 class RolesSource(menus.ListPageSource):
-    def __init__(self, data: typing.List[Player]):
+    def __init__(self, data: List[Player]):
         super().__init__(data, per_page=10)
 
-    async def format_page(
-        self, menu: menus.Menu, entries: typing.List[typing.Type[Role]]
-    ):
+    async def format_page(self, menu: menus.MenuPages, entries: List[Type[Role]]):
         embed = discord.Embed(
             title="Roles",
             color=0xFF0000,
@@ -49,16 +52,19 @@ class RolesSource(menus.ListPageSource):
         return embed
 
 
-class Mafia(Cog):
+class Mafia(commands.Cog):
     games = {}
     # Useful for restarting a game, or getting info on the last game
     previous_games = {}
     errored_games = {}
 
     @commands.group(invoke_without_command=True)
-    async def mafia(self, ctx):
+    async def mafia(self, ctx: Context):
         """The parent command to handle mafia games"""
-        await ctx.bot.get_command("help")(ctx)
+        cmd = ctx.bot.get_command("help")
+
+        if isinstance(cmd, commands.Command):
+            await cmd(ctx)
 
     @mafia.command(name="start")
     @commands.guild_only()

@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import abc
+import collections
 import random
 import typing
 
 import discord
-
+from interactions import Vote
+from interactions.select import SelectView, DisguiserSelect, player_select
 from utils import Alignment, AttackType, DefenseType
-from buttons import Vote
-
+from utils.misc import get_mafia_player
 
 if typing.TYPE_CHECKING:
+    from custom_models import MafiaBot
+
     from mafia import MafiaGame, Player
-    from utils.custom_bot import MafiaBot
 
 __all__ = (
     "Role",
@@ -79,15 +81,21 @@ class Citizen(Role):
 class Doctor(Citizen):
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive that isn't ourselves
-        msg = (
-            "Please provide **the number next to** the name of one player "
-            "you would like to save from being killed tonight"
+        msg = "Please select the player you would like to save tonight"
+        choices = game.alive_players
+        choices.remove(player)
+        target = await player_select(
+            player,
+            game,
+            msg,
+            choices,
+            timeout=game._config.night_length,
         )
-        target = await player.wait_for_player(game, msg)
-        target.protect(player)
-        await player.channel.send(
-            f"\U0001f3e5 You are protecting {target.member.name} tonight"
-        )
+        if target is not None:
+            target = get_mafia_player(game, target)
+            await player.send_message(
+                content=f"\U0001f3e5 You are protecting {target.member.name} tonight"
+            )
 
 
 class Sheriff(Citizen):
@@ -95,21 +103,31 @@ class Sheriff(Citizen):
 
     async def night_task(self, game: MafiaGame, player: Player):
         # Get everyone alive that isn't ourselves
-        msg = "If you would like to shoot someone tonight, provide just **the number next to** their name"
-        target = await player.wait_for_player(game, msg)
-
-        # Handle what happens if their choice is right/wrong
-        if target.role.alignment is Alignment.citizen or (
-            target.disguised_as
-            and target.disguised_as.role.alignment is Alignment.citizen
-        ):
-            player.kill(player)
-            target.kill(player)
-        else:
-            target.kill(player)
-        await player.channel.send(
-            f"\U0001f52b {target.member.name} is getting killed tonight!"
+        msg = "If you would like to shoot someone tonight, select them"
+        choices = game.alive_players
+        choices.remove(player)
+        target = await player_select(
+            player,
+            game,
+            msg,
+            choices,
+            timeout=game._config.night_length,
         )
+        if target is not None:
+            target = get_mafia_player(game, target)
+
+            # Handle what happens if their choice is right/wrong
+            if target.role.alignment is Alignment.citizen or (
+                target.disguised_as
+                and target.disguised_as.role.alignment is Alignment.citizen
+            ):
+                player.kill(player)
+                target.kill(player)
+            else:
+                target.kill(player)
+            await player.send_message(
+                content=f"\U0001f52b {target.member.name} is getting killed tonight!"
+            )
 
 
 class Jailor(Citizen):
@@ -120,67 +138,83 @@ class Jailor(Citizen):
     async def day_task(self, game: MafiaGame, player: Player):
         if self.jails <= 0:
             return
-        msg = "If you would like to jail someone tonight, provide just **the number next to** their name"
-        target = await player.wait_for_player(game, msg)
-        target.night_role_blocked = True
-        target.jail(player)
-        self.target = target
-
-        self.jails -= 1
-        await player.channel.send(
-            f"\U0001f46e {target.member.name} has been jailed. During the night "
-            "anything you say in here will be sent there, and vice versa. "
-            "If you say just `Execute` they will be executed"
+        msg = "If you would like to jail someone tonight, select them"
+        choices = game.alive_players
+        choices.remove(player)
+        target = await player_select(
+            player,
+            game,
+            msg,
+            choices,
+            timeout=game._config.night_length,
         )
+        if target is not None:
+            target = get_mafia_player(game, target)
+
+            target.night_role_blocked = True
+            target.jail(player)
+            self.target = target
+
+            self.jails -= 1
+            await player.send_message(
+                content=f"\U0001f46e {target.member.name} has been jailed. During the night "
+                "anything you say in here will be sent there, and vice versa. "
+                "If you say just `Execute` they will be executed"
+            )
 
     async def night_task(self, game: MafiaGame, player: Player):
         if target := self.target:
-            self.target = None
-            await target.channel.send(
-                f"{target.member.mention} You've been jailed! Messages from here on will be from/to the Jailor:"
+
+            # Allow target access to jailed channel
+            await game.jailed.set_permissions(target.member, read_messages=True)
+
+            await game.jailed.send(
+                content=f"{target.member.mention} You've been jailed! Messages from here on will be from/to the Jailor:"
                 "-------------------------------------------"
             )
 
             # Handle the swapping of messages from the jailed player
             def check(m):
                 # If the jailor is the one talking in his channel
-                if m.channel == player.channel and m.author == player.member:
+                if m.channel == game.jailor and m.author == player.member:
                     if m.content.lower() == "execute":
                         target.kill(player)
                         game.ctx.create_task(
-                            target.channel.send("The Jailor has executed you!")
+                            game.jailed.send("The Jailor has executed you!")
                         )
                         return True
                     else:
-                        game.ctx.create_task(
-                            target.channel.send(f"Jailor: {m.content}")
-                        )
+                        game.ctx.create_task(game.jailed.send(f"Jailor: {m.content}"))
                 # If the jailed is the one talking in the jail channel
-                elif m.channel == target.channel and m.author == target.member:
+                elif m.channel == game.jailed and m.author == target.member:
                     game.ctx.create_task(
-                        player.channel.send(f"{target.member.name}: {m.content}")
+                        game.jailor.send(f"{target.member.name}: {m.content}")
                     )
 
                 return False
 
             await game.ctx.bot.wait_for("message", check=check)
 
+    async def post_night_task(self, game: MafiaGame, player: Player) -> None:
+        if target := self.target:
+            self.target = None
+            await game.jailed.set_permissions(target.member, overwrite=None)
+            await game.jailed.purge(limit=None)
+
 
 class PI(Citizen):
     async def night_task(self, game: MafiaGame, player: Player):
-        # Get everyone alive
-        choices = [p.member.name for p in game.players if not p.dead and p != self]
-        msg = "Choose **the number next to** the first person you want to investigate"
-        player1 = await player.wait_for_player(game, msg, choices=choices)
-        choices.remove(player1.member.name)
+        choices = game.alive_players
+        choices.remove(player)
 
-        while True:
-            msg = "Choose **the number next to** the second person you want to investigate"
-            player2 = await player.wait_for_player(game, msg, choices=choices)
-            if player2 == player1:
-                await player.channel.send("You can't choose the same person twice")
-            else:
-                break
+        msg = "Choose the people you would like to investigate"
+        choices = await SelectView(
+            msg, choices, player.interaction, min_selection=2, max_selection=2
+        ).start()
+
+        player1, player2 = choices
+        player1 = get_mafia_player(game, player1)
+        player2 = get_mafia_player(game, player2)
 
         # Now compare the two people
         if (
@@ -190,12 +224,12 @@ class PI(Citizen):
             player1.role.alignment is Alignment.mafia
             and player2.role.alignment is Alignment.mafia
         ):
-            await player.channel.send(
-                f"{player1.member.mention} and {player2.member.mention} have the same alignment"
+            await player.send_message(
+                content=f"{player1.member.mention} and {player2.member.mention} have the same alignment"
             )
         else:
-            await player.channel.send(
-                f"{player1.member.mention} and {player2.member.mention} do not have the same alignment"
+            await player.send_message(
+                content=f"{player1.member.mention} and {player2.member.mention} do not have the same alignment"
             )
 
 
@@ -203,11 +237,17 @@ class Lookout(Citizen):
     watching: typing.Optional[Player] = None
 
     async def night_task(self, game: MafiaGame, player: Player):
-        msg = "Provide **the number next to** the player you want to watch tonight, at the end of the night I will let you know who visited them"
-        self.watching = await player.wait_for_player(game, msg)
-        await player.channel.send(
-            f"\U0001f440 You'll be watching {self.watching.member.name} tonight"
+        msg = "Provide the player you want to watch tonight, at the end of the night I will let you know who visited them"
+        choices = game.alive_players
+        choices.remove(player)
+        target = await player_select(
+            player, game, msg, choices, timeout=game._config.night_length
         )
+        if target is not None:
+            self.watching = get_mafia_player(game, target)
+            await player.send_message(
+                content=f"\U0001f440 You'll be watching {self.watching.member.name} tonight"
+            )
 
     async def post_night_task(self, game: MafiaGame, player: Player):
         if self.watching is None:
@@ -218,10 +258,10 @@ class Lookout(Citizen):
         if visitors:
             fmt = "\n".join(p.member.name for p in visitors)
             msg = f"{self.watching.member.name} was visited by:\n{fmt}"
-            await player.channel.send(msg)
+            await player.send_message(content=msg)
         else:
-            await player.channel.send(
-                f"{self.watching.member.name} was not visited by anyone"
+            await player.send_message(
+                content=f"{self.watching.member.name} was not visited by anyone"
             )
 
         self.watching = None
@@ -248,13 +288,20 @@ class Janitor(Mafia):
         if self.cleans <= 0:
             return
 
-        msg = "Provide **the number next to** the player you want to clean tonight"
-        player = await player.wait_for_player(game, msg)
-        player.clean(player)
-        await player.channel.send(
-            f"\U0001f9f9 There won't be a sign of {player.member.name} left tonight"
+        msg = "Provide the player you want to clean tonight"
+        choices = game.alive_players
+        choices.remove(player)
+
+        target = await player_select(
+            player, game, msg, choices, timeout=game._config.night_length
         )
-        self.cleans -= 1
+        if target is not None:
+            player = get_mafia_player(game, target)
+            player.clean(player)
+            await player.send_message(
+                content=f"\U0001f9f9 There won't be a sign of {player.member.name} left tonight"
+            )
+            self.cleans -= 1
 
 
 class Disguiser(Mafia):
@@ -270,17 +317,23 @@ class Disguiser(Mafia):
             for p in game.players
             if not p.dead and p.role.alignment is not Alignment.mafia
         ]
-        msg = "Choose **the number next to** the mafia member you want to disguise"
-        player1 = await player.wait_for_player(game, msg, choices=mafia)
 
-        msg = f"Choose **the number next to** the non-mafia member you want to disguise {player1.member.name} as"
-        player2 = await player.wait_for_player(game, msg, choices=non_mafia)
-
-        if not player1.jailed and not player2.jailed:
-            player1.disguise(player2, player)
-        await player.channel.send(
-            f"\U0001f575\U0000fe0f {player1.member.name} has been disguised as {player2.member.name}"
+        view = DisguiserSelect(
+            "Choose the member to disguise, and who to disguise them as",
+            mafia,
+            non_mafia,
+            game.inter_mapping[player.member.id],
         )
+        if target := await view.start():
+            player1, player2 = target
+            player1 = get_mafia_player(game, player1)
+            player2 = get_mafia_player(game, player2)
+
+            if not player1.jailed and not player2.jailed:
+                player1.disguise(player2, player)
+            await player.send_message(
+                content=f"\U0001f575\U0000fe0f {player1.member.name} has been disguised as {player2.member.name}"
+            )
 
 
 class Independent(Role):
@@ -297,22 +350,30 @@ class Survivor(Independent):
     async def night_task(self, game: MafiaGame, player: Player):
         if self.vests <= 0:
             return
+        msg = f"Do you want to protect yourself tonight? {self.vests} vests remaining"
 
         view = Vote(
-            f"Do you want to protect yourself tonight? {self.vests} vests remaining",
+            msg,
             allowed=[player.member],
             # Just to ensure no race conditions happen,
             # only allow changing up to 5 seconds before night ends
             timeout=game._config.night_length - 5,
         )
-        votes = await view.start(self.channel)
+        await player.send_message(
+            msg=msg,
+            view=Vote,
+        )
+        await view.wait()
+        votes = collections.Counter(view.votes.values())
         result = votes.get("yes", 0) > 0
 
         if result:
             self.vests -= 1
             player.protected_by = player
 
-            await player.channel.send("\U0001f9ba You're protecting yourself tonight")
+            await player.send_message(
+                content="\U0001f9ba You're protecting yourself tonight"
+            )
 
 
 class Jester(Independent):
@@ -361,26 +422,28 @@ class Arsonist(Independent):
         doused_msg = "\n".join(p.member.name for p in doused)
         undoused = [p.member.name for p in game.players if not p.doused and not p.dead]
         msg = (
-            f"Doused targets:\n\n{doused_msg}\n\n"
-            "Choose **the number next to** a target to douse, "
+            f"Doused targets:\n\n{doused_msg}\n\nChoose a target to douse, "
             "if you choose yourself you will ignite all doused targets"
         )
 
-        player = await player.wait_for_player(
-            game, msg, only_others=False, choices=undoused
+        target = await player_select(
+            player, game, msg, undoused, timeout=game._config.night_length
         )
 
-        # Ignite
-        if player == player:
-            for player in doused:
-                player.kill(player)
-            await player.channel.send("\U0001f525 They'll all burn")
-        else:
-            player.doused = True
-            player.visit(player)
-            await player.channel.send(
-                f"\U0001f6e2\U0000fe0f {player.member.name} has been doused"
-            )
+        if target is not None:
+            player = get_mafia_player(game, target)
+
+            # Ignite
+            if player == player:
+                for player in doused:
+                    player.kill(player)
+                await player.send_message(content="\U0001f525 They'll all burn")
+            else:
+                player.doused = True
+                player.visit(player)
+                await player.send_message(
+                    content=f"\U0001f6e2\U0000fe0f {player.member.name} has been doused"
+                )
 
     def win_condition(self, game: MafiaGame, player: Player) -> bool:
         return game.total_alive == 1 and not player.dead

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 from discord.activity import Game
-from buttons.join import Join
 import collections
 import dataclasses
 import math
@@ -14,7 +13,7 @@ import discord
 from discord.mentions import AllowedMentions
 
 from mafia import role_mapping, Role, Player
-from buttons import Vote, Config
+from interactions import Vote, Config, Join
 from utils import (
     create_night_image,
     create_day_image,
@@ -31,7 +30,7 @@ from utils import (
 )
 
 if typing.TYPE_CHECKING:
-    from utils import Context
+    from custom_models import Context
 
 can_send_overwrites = discord.PermissionOverwrite(send_messages=True)
 cannot_send_overwrites = discord.PermissionOverwrite(send_messages=False)
@@ -82,10 +81,6 @@ class MafiaGame:
 
         # Different chats needed
         self.category = discord.CategoryChannel = None
-        # self.chat: typing.Optional[discord.TextChannel] = None
-        # self.info: typing.Optional[discord.TextChannel] = None
-        # self.mafia_chat: typing.Optional[discord.TextChannel] = None
-        # self.dead_chat: typing.Optional[discord.TextChannel] = None
 
         self._alive_game_role_name: str = "Alive Players"
         # self._alive_game_role: discord.Role
@@ -122,10 +117,28 @@ class MafiaGame:
         return len(self.players)
 
     @property
+    def alive_players(self) -> typing.List[Player]:
+        return [p for p in self.players if not p.dead]
+
+    @property
     def godfather(self) -> typing.Optional[Player]:
-        for player in self.players:
-            if player.is_godfather and not player.dead:
-                return player
+        g = discord.utils.get(self.players, is_godfather=True, dead=False)
+        if g is None:
+            g = self._rand.choice(
+                [
+                    p
+                    for p in self.players
+                    # We don't want to choose special mafia
+                    if p.role.__class__ is role_mapping.get("Mafia")
+                ]
+            )
+            g.role.is_godfather = True
+
+            self.ctx.create_task(
+                self.mafia_chat.send(f"{g.member.mention} has become the new godfather")
+            )
+
+        return g
 
     # Notification methods
 
@@ -159,19 +172,6 @@ class MafiaGame:
         """Returns all winners of this game"""
         return [p for p in self.players if p.win_condition(self)]
 
-    async def choose_godfather(self):
-        godfather = self._rand.choice(
-            [
-                p
-                for p in self.players
-                # We don't want to choose special mafia
-                if p.role.__class__ is role_mapping.get("Mafia")
-            ]
-        )
-        godfather.role.is_godfather = True
-
-        await godfather.channel.send("You are the godfather!")
-
     async def pick_players(self):
         # I'm paranoid
         for _ in range(5):
@@ -179,8 +179,7 @@ class MafiaGame:
 
         for role in self._config.roles:
             member = self._members.pop()
-            p = Player(member, self.ctx, role())
-            p.set_interaction(self.inter_mapping[p.member.id])
+            p = Player(member, self.ctx, role(), self.inter_mapping[member.id])
             self.players.append(p)
 
     # Channel setup methods
@@ -209,15 +208,27 @@ class MafiaGame:
         mafia_overwrites = {
             self.ctx.guild.default_role: everyone_overwrites,
             self.ctx.guild.me: bot_overwrites,
+            # Mafia can't talk during the day first, turn it off to start
             self._alive_game_role: cannot_send_overwrites,
+        }
+        jailed_overwrites = {
+            self.ctx.guild.default_role: everyone_overwrites,
+            self.ctx.guild.me: bot_overwrites,
+            self._alive_game_role: can_send_overwrites,
+        }
+        jailor_overwrites = {
+            self.ctx.guild.default_role: everyone_overwrites,
+            self.ctx.guild.me: bot_overwrites,
+            self._alive_game_role: can_send_overwrites,
         }
 
         # Now add player specific overwrites into them
         for p in self.players:
             if p.role.alignment is Alignment.mafia:
                 mafia_overwrites[p.member] = can_read_overwrites
+            if isinstance(p.role, role_mapping["jailor"]):
+                jailor_overwrites[p.member] = can_read_overwrites
             info_overwrites[p.member] = can_read_overwrites
-            await self.chat.set_permissions(p.member, overwrite=can_read_overwrites)
 
         self.info: discord.TextChannel = await category.create_text_channel(
             "info", overwrites=info_overwrites
@@ -228,40 +239,12 @@ class MafiaGame:
         self.mafia_chat: discord.TextChannel = await category.create_text_channel(
             "mafia", overwrites=mafia_overwrites
         )
-
-    async def _setup_channels(self, category: discord.CategoryChannel):
-        """Receives a category with the default channels already setup, then sets up the
-        rest of the players. This will also spawn the day tasks for each player for the first day"""
-        tasks = []
-
-        for p in self.players:
-            # Everyone has their own private channel, setup overwrites for them
-            overwrites = {
-                self.ctx.guild.default_role: everyone_overwrites,
-                self.ctx.guild.me: bot_overwrites,
-                self._alive_game_role: can_send_overwrites,
-                p.member: can_read_overwrites,
-            }
-            # Create their channel
-            channel = await category.create_text_channel(
-                p.member.name, overwrites=overwrites
-            )
-            # Set it on the player object
-            p.set_channel(channel)
-            # Send them their startup message and pin it
-            msg = await channel.send(p.role.startup_channel_message(self, p))
-            await msg.pin()
-
-            tasks.append(self.ctx.create_task(p.day_task(self)))
-
-        # Now that their channels are setup, we can choose the godfather
-        await self.choose_godfather()
-
-        # Now wait till day is over and cancel the rest of the tasks
-        await asyncio.sleep(self._config.day_length)
-        for task in tasks:
-            if not task.done():
-                task.cancel()
+        self.jailed: discord.TextChannel = await category.create_text_channel(
+            "jailed", overwrites=jailed_overwrites
+        )
+        self.jailor: discord.TextChannel = await category.create_text_channel(
+            "jailor", overwrites=jailor_overwrites
+        )
 
     async def _setup_amount_players(self) -> typing.Tuple[int, int]:
         ctx = self.ctx
@@ -474,7 +457,7 @@ class MafiaGame:
 
             # If they were protected, then let them know
             if protector and killer.attack_type <= protector.defense_type:
-                await player.channel.send(protector.save_message)
+                await player.send_message(content=protector.save_message)
                 # If the killer was mafia, we also want to notify them of the saving
                 if killer.role.alignment is Alignment.mafia:
                     await self.mafia_chat.send(
@@ -495,8 +478,8 @@ class MafiaGame:
 
             # If they were cleaned, then notify the cleaner
             if cleaner:
-                await cleaner.channel.send(
-                    f"You cleaned {player.member.name}'s dead body up, their role was {player}"
+                await cleaner.send_message(
+                    content=f"You cleaned {player.member.name}'s dead body up, their role was {player}"
                 )
 
             # Now if we're here it's a kill that wasn't stopped
@@ -516,7 +499,6 @@ class MafiaGame:
             )
             # Now if they were godfather, choose new godfather
             if player.is_godfather:
-                await self.choose_godfather()
                 player.role.is_godfather = False
             # If they had an executionor targetting them, they become a jester
             if player.executionor_target and not player.executionor_target.dead:
@@ -611,21 +593,10 @@ class MafiaGame:
             )
             player.dead = True
             player.lynched = True
-            # Remove their permissions from their channel
-            await player.channel.set_permissions(
-                player.member, read_messages=True, send_messages=False
-            )
             if player.role.alignment is Alignment.mafia:
                 await self.mafia_chat.set_permissions(
                     player.member, read_messages=True, send_messages=False
                 )
-                # Repick godfather if they were godfather
-                if player.is_godfather:
-                    try:
-                        await self.choose_godfather()
-                    # If there's no mafia, citizens win. Just return, the cycle will handle it
-                    except IndexError:
-                        return
             await player.member.remove_roles(self._alive_game_role)
             await self.dead_chat.set_permissions(
                 player.member, read_messages=True, send_messages=True
@@ -653,9 +624,6 @@ class MafiaGame:
             for p in self.players:
                 if p.dead or p.night_role_blocked:
                     continue
-                self.ctx.create_task(
-                    p.channel.send("Night is about to end in 20 seconds")
-                )
             await self.mafia_chat.send("Night is about to end in 20 seconds")
             await asyncio.sleep(20)
 

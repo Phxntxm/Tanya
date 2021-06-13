@@ -10,7 +10,7 @@ from discord.ext import menus
 from utils import min_max_check, to_keycap, Alignment
 
 if typing.TYPE_CHECKING:
-    from utils import Context
+    from custom_models import Context
     from mafia import Role
 
 

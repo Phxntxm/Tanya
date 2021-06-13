@@ -60,26 +60,6 @@ class Vote(discord.ui.View):
         await msg.edit(view=self)
         return collections.Counter(self.votes.values())
 
-    # @discord.ui.select(
-    #     placeholder="l",
-    #     options=[
-    #         SelectOption(
-    #             label="1",
-    #             description="1",
-    #             value="1",
-    #             default=True,
-    #         ),
-    #         SelectOption(
-    #             label="2",
-    #             description="2",
-    #             value="2",
-    #             default=False,
-    #         ),
-    #     ],
-    # )
-    # async def choose(self, select: discord.ui.Select, interaction: discord.Interaction):
-    #     print(select, interaction)
-
     async def handle_click(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):

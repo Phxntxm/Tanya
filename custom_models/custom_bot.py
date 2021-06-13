@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 
 import config
-from utils import Context
+from custom_models import Context
 
 
 class MafiaBot(commands.Bot):

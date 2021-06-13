@@ -1,10 +1,11 @@
 from __future__ import annotations
+from re import I
 
 import typing
 
 import discord
 from discord.ext import commands
-from utils import AttackType, DefenseType, get_mafia_player, private_channel_check
+from utils import AttackType, DefenseType, get_mafia_player
 
 from mafia import role_mapping
 
@@ -27,18 +28,18 @@ class Player:
     night_role_blocked: bool = False
     jailed: bool = False
 
-    interaction: typing.Optional[discord.Interaction]
-
     def __init__(
         self,
         discord_member: discord.Member | discord.User,
         ctx: commands.Context,
         role: Role,
+        interaction: discord.Interaction,
     ):
         self.member = typing.cast(discord.Member, discord_member)
         self.ctx = ctx
         self.role = role
         self.visited_by: typing.List[Player] = []
+        self.interaction = interaction
 
     def __str__(self) -> str:
         return str(self.role)
@@ -96,9 +97,6 @@ class Player:
         if self.interaction is not None:
             await self.interaction.followup.send(ephemeral=True, **kwargs)
 
-    def set_interaction(self, interaction: discord.Interaction):
-        self.interaction = interaction
-
     def win_condition(self, game: MafiaGame) -> bool:
         return self.role.win_condition(game, self)
 
@@ -110,10 +108,6 @@ class Player:
         self.cleaned_by = None
         self.disguised_as = None
         self.jailed = False
-
-    def set_channel(self, channel: discord.TextChannel):
-        self.channel = channel
-        self.role.channel = channel
 
     def protect(self, by: Player):
         self.protected_by = by
@@ -142,54 +136,16 @@ class Player:
 
     @classmethod
     async def convert(cls, ctx: commands.Context, arg: str) -> typing.Optional[Player]:
-        for name, role in role_mapping.items():
-            if name not in ("Mafia", "Citizen") and name.lower() == arg.lower():
-                return cls(ctx.author, ctx, role())
+        game = ctx.bot.get_cog("Mafia").games.get(ctx.guild.id)
 
-        raise commands.BadArgument(f"Could not find a role named {arg}")
+        if game is None:
+            raise commands.BadArgument(f"No game going on in this server")
 
-    async def wait_for_player(
-        self,
-        game: MafiaGame,
-        message: str,
-        only_others: bool = True,
-        only_alive: bool = True,
-        choices: typing.List[str] = None,
-    ) -> Player:
-        # Get available choices based on what options given
-        if choices is None:
-            choices = []
-            for p in game.players:
-                if p.dead and only_alive:
-                    continue
-                if p == self and only_others:
-                    continue
-                choices.append(p.member.name)
-        # Turn into string
-        mapping = {count: player for count, player in enumerate(choices, start=1)}
-        _choices = "\n".join(f"{count}: {player}" for count, player in mapping.items())
-        await self.channel.send(message + f". Choices are:\n{_choices}")
+        # It's a tuple of (asyncio.Task, MafiaGame)
+        game = game[1]
+        player = get_mafia_player(game, arg)
 
-        msg = await game.ctx.bot.wait_for(
-            "message",
-            check=private_channel_check(game, self, mapping, not only_others),
-        )
-        player = mapping[int(msg.content)]
-        return get_mafia_player(game, player)
-
-    async def lock_channel(self):
-        if self.channel:
-            await self.channel.set_permissions(
-                self.channel.guild.default_role,
-                read_messages=False,
-                send_messages=False,
-            )
-
-    async def unlock_channel(self):
-        if self.channel:
-            await self.channel.set_permissions(
-                self.channel.guild.default_role, read_messages=False, send_messages=True
-            )
+        raise commands.BadArgument(f"Could not find a player named {arg}")
 
     async def day_task(self, game: MafiaGame):
         await self.role.day_task(game, self)

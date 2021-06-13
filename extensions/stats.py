@@ -3,10 +3,9 @@ import typing
 
 import discord
 from discord.ext import commands
-from utils import Context
 
 if typing.TYPE_CHECKING:
-    from utils.custom_bot import MafiaBot
+    from custom_models import MafiaBot, Context
 
 
 class Stats(commands.Cog):

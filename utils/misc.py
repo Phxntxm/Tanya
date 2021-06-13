@@ -184,36 +184,6 @@ def nomination_check(game: MafiaGame, nominations: typing.Dict) -> typing.Callab
     return check
 
 
-def private_channel_check(
-    game: MafiaGame,
-    player: Player,
-    mapping: typing.Dict[int, str],
-    can_choose_self: bool = False,
-) -> typing.Callable[[discord.Message], bool]:
-    def check(m: discord.Message) -> bool:
-        # Only care about messages from the author in their channel
-        if m.channel.id != player.channel.id:
-            return False
-        elif m.author != player.member:
-            return False
-        # Now make sure it's a num, and in our mapping
-        # Set the player for use after
-        try:
-            player_id = mapping[int(m.content)]
-            p: Player = get_mafia_player(game, player_id)
-        except (ValueError, KeyError, commands.MemberNotFound):
-            return False
-        # Check the choosing self
-        if not can_choose_self and player == p:
-            game.ctx.create_task(p.channel.send("You cannot chooose yourself"))
-        elif p is not None:
-            return True
-
-        return False
-
-    return check
-
-
 def mafia_kill_check(
     game: MafiaGame, mapping: typing.Dict[int, str]
 ) -> typing.Callable:

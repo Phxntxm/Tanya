@@ -1,10 +1,16 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from discord.ext import commands
+
+if TYPE_CHECKING:
+    from custom_models import Context
 
 
 class ErrorHandler(commands.Cog):
     @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        error = error.original if hasattr(error, "original") else error
+    async def on_command_error(self, ctx: Context, error: commands.CommandError):
+        error = getattr(error, "original", error)
         ignored_errors = (
             commands.CommandNotFound,
             commands.DisabledCommand,

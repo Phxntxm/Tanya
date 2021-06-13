@@ -4,7 +4,7 @@ from glob import glob
 import discord
 
 import config
-from utils.custom_bot import MafiaBot
+from custom_models import MafiaBot
 
 intents = discord.Intents(
     guild_messages=True,
